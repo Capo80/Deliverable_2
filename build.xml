@@ -10,11 +10,13 @@
     <property name="source" value="1.8"/>
     <path id="Deliverable 2.classpath">
         <pathelement location="bin"/>
+        <pathelement location="../../Downloads/java-json.jar"/>
     </path>
     <target name="init">
         <mkdir dir="bin"/>
         <copy includeemptydirs="false" todir="bin">
             <fileset dir="src">
+                <exclude name="**/*.launch"/>
                 <exclude name="**/*.java"/>
             </fileset>
         </copy>
@@ -45,5 +47,15 @@
     <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
         <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
         <antcall target="build"/>
+    </target>
+    <target name="GetClassBuggyness">
+        <java classname="it.deliv2.GetClassBuggyness" failonerror="true" fork="yes">
+            <classpath refid="Deliverable 2.classpath"/>
+        </java>
+    </target>
+    <target name="GetReleaseInfo">
+        <java classname="it.deliv2.GetReleaseInfo" failonerror="true" fork="yes">
+            <classpath refid="Deliverable 2.classpath"/>
+        </java>
     </target>
 </project>
