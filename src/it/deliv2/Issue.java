@@ -2,16 +2,30 @@ package it.deliv2;
 
 public class Issue {
 	
-	String key;
-	int introVersion;
-	int fixVersion;
+	private String key;
+	private int introVersion;
+	private int openVersion;
+	private int fixVersion;
 	
-	public Issue(String key, int introVersion, int fixVersion) {
+	public final static int FIX_DEF = -1;
+	public final static int INTRO_DEF = 100000000;
+	
+	
+	public Issue(String key, int introVersion,int openVersion, int fixVersion) {
 		this.key = key;
 		this.introVersion = introVersion;
 		this.fixVersion = fixVersion;
+		this.openVersion = openVersion;
 	}
 	
+	public int getOpenVersion() {
+		return openVersion;
+	}
+
+	public void setOpenVersion(int openVersion) {
+		this.openVersion = openVersion;
+	}
+
 	public String getKey() {
 		return key;
 	}

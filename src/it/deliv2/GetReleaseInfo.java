@@ -79,7 +79,8 @@ public class GetReleaseInfo {
 		               fileWriter.append(",");
 		               fileWriter.append(releaseNames.get(releases.get(i)));
 		               fileWriter.append(",");
-		               fileWriter.append(releases.get(i).toString());
+		               String fullDate = releases.get(i).toString();
+		               fileWriter.append(fullDate.split("T")[0]);
 		               fileWriter.append("\n");
 		            }
 
