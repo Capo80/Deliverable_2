@@ -21,9 +21,17 @@ import org.json.JSONObject;
 
 public class GetClassBuggyness {
 
+
+	private static String projName = "BOOKKEEPER";
+	private static String versionFileName = projName + "VersionInfo.csv";
+	private static String repoURL = "https://github.com/Capo80/"+projName.toLowerCase()+".git";
+	private static HashMap<String, Integer> versionIDMap;
 	private static HashMap<String, Issue> issuesMap;
 	private static List<String> versionDates;
 	private static List<Integer> versionIDs;
+	private static float[] averages;
+	private static int[] totals;
+	private static Git gitManager;
 	
 	private static HashMap<String, Integer> recoverVersionIDs(String fileName) throws FileNotFoundException {
 		
@@ -69,86 +77,134 @@ public class GetClassBuggyness {
 		
 		
 	}
+	private static int getIDfromDate(String date) {
+    	int m = 0;
+    	while (m < versionDates.size() && date.compareTo(versionDates.get(m)) > 0) {
+    		m++;
+    	}
+    	if (m >= versionIDs.size())
+    		return Issue.FIX_DEF;
+    	else
+    		return versionIDs.get(m);
+	}
+	
+	//Recovers the fixVersion
+	//first it check the commits, if there are none, it takes the fix version in jira
+	private static int getMaxVersion(JSONArray versions, String key) throws JSONException, IOException {
+		
+    	int fixVers = Issue.FIX_DEF;
+    	
+    	String lastCommitDate = gitManager.getLastCommitDate(key);
+    	if (lastCommitDate != "")
+    		fixVers =  getIDfromDate(lastCommitDate);
+    	
+    	if (fixVers != Issue.FIX_DEF)
+    		return fixVers;
+    	
+    	for(int h = 0; h < versions.length(); h++) {
+    		int currVers = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		if (currVers > fixVers)
+    			fixVers = currVers;
+    	}
+		
+		return fixVers;
+		
+	}
+	
+	private static int getMinVersion(JSONArray versions) throws JSONException {
+    	int introVers = Issue.INTRO_DEF;
+    	for(int h = 0; h < versions.length(); h++) {
+    		int currVers = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		if (currVers < introVers)
+    			introVers = currVers;
+    	}
+		return introVers;
+	}
+	
+	private static void recoverInfoVersions(JSONArray issues, int total) throws JSONException, IOException {
+		
+		for (int i = 0; i < total && i < 1000; i++) {
+			
+        	String key = issues.optJSONObject(i).get("key").toString();
+        	
+        	JSONObject fields = issues.getJSONObject(i).getJSONObject("fields");
+        
+        	//Recover affected versions field
+        	JSONArray versions = fields.getJSONArray("versions");
+        	
+        	//Find earliest affected version
+        	int introVers = getMinVersion(versions);
+        	
+        	//Recover opning date of the issue
+        	String date = fields.getString("created").split("T")[0];
+        	
+        	
+        	//Find opening version
+        	int openVers = getIDfromDate(date);
+        	
+        	//System.out.println(versionDates.get(m-1) + " " +  date + " " + versionDates.get(m));
+        	
+        	//Recover fixed version
+        	JSONArray fixVersions = fields.getJSONArray("fixVersions");
+        	
+        	//Find latest fixed version
+        	int fixVers = getMaxVersion(fixVersions, key);
+        	
+        	if (introVers != Issue.INTRO_DEF && openVers < introVers)
+        		introVers = Issue.INTRO_DEF;
+        	
+        	if (fixVers != Issue.FIX_DEF)
+        		issuesMap.put(key, new Issue(key, introVers, openVers ,  fixVers));
+        	
+        	//Calculate sums for average
+        	if (introVers != Issue.INTRO_DEF && fixVers != Issue.FIX_DEF) {
+        		for(int h = fixVers+1; h < versionIDs.size(); h++) {
+        			totals[h]++;
+        			if (fixVers != openVers) {
+        				averages[h] += (fixVers - introVers)*1.0/(fixVers - openVers)*1.0;
+        				System.out.println((fixVers - introVers)+ " " + (fixVers - openVers) + " " + (fixVers - introVers)*1.0/(fixVers - openVers)*1.0);
+        			} else {
+        				averages[h] += (fixVers - introVers);
+        				System.out.println((fixVers - introVers));            			
+        			}
+        		}
+        	}
+        	System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
+        }
+		
+	}
 	public static void main(String[] args) throws IOException, JSONException {
 		
-		//Read info from version file
-		HashMap<String, Integer> versionIDMap = recoverVersionIDs("BOOKKEEPERVersionInfo.csv");
-		initVersionDates("BOOKKEEPERVersionInfo.csv");
+		//import repository if its not there
+		gitManager = new Git(repoURL, "..");
 		
-		String projName = "BOOKKEEPER";
+		//Read info from version file
+		versionIDMap = recoverVersionIDs(versionFileName);
+		initVersionDates(versionFileName);
+
 		Integer j = 0;
 		Integer i = 0; 
 		Integer total = 1;
-		float[] averages = new float[versionIDs.size()];
-		int[] totals = new int[versionIDs.size()];
+		averages = new float[versionIDs.size()];
+		totals = new int[versionIDs.size()];
 		Arrays.fill(averages, 0);
 		Arrays.fill(totals, 0);
 		
+		//Initialize issue map
+		issuesMap = new HashMap<String, Issue>();
 		do {
 			j = i + 1000;
 			//Send query to jira for issues (1000 at the time)
-			String url = "https://issues.apache.org/jira/rest/api/2/search?jql=project%20=%22"+projName+"%22AND%22issueType%22=%22Bug%22&fields=versions,fixVersions,created&startAt="+ i.toString() + "&maxResults=" + j.toString();
+			String url = "https://issues.apache.org/jira/rest/api/2/search?jql=project%20=%22"+projName+"%22AND%22issueType%22=%22Bug%22AND%20(%22status%22%20=%20CLOSED%20OR%20%22status%22=RESOLVED)%20AND%22Resolution%22%20=Fixed&fields=versions,fixVersions,created&startAt="+ i.toString() + "&maxResults=" + j.toString();
 			JSONObject json = JsonManager.readJsonFromUrl(url);
 			
 			total = json.getInt("total");
-			JSONArray issues = json.getJSONArray("issues");			
+			JSONArray issues = json.getJSONArray("issues");	
+			
 			//Iterate trought the issues
-			issuesMap = new HashMap<String, Issue>();
-	        for (; i < total && i < j; i++) {
-	        	String key = issues.getJSONObject(i%1000).get("key").toString();
-	        	
-	        	JSONObject fields = issues.getJSONObject(i%1000).getJSONObject("fields");
+	        recoverInfoVersions(issues, total);
+	        i = i + 1000;
 	        
-	        	//Recover affected versions field
-	        	JSONArray versions = fields.getJSONArray("versions");
-	        	
-	        	//Find earliest affected version
-	        	int introVers = Issue.INTRO_DEF;
-	        	for(int h = 0; h < versions.length(); h++) {
-	        		int currVers = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
-	        		if (currVers < introVers)
-	        			introVers = currVers;
-	        	}
-	        	
-	        	//Recover opning date of the issue
-	        	String date = fields.getString("created").split("T")[0];
-	        	
-	        	//Find opening version
-	        	int m = 0;
-	        	while (date.compareTo(versionDates.get(m)) > 0) {
-	        		if (m >= versionDates.size())
-	        			break;
-	        		m++;
-	        	}
-	        	int openVers = versionIDs.get(m);
-	        	
-	        	//Recover fixed version
-	        	JSONArray fixVersions = fields.getJSONArray("fixVersions");
-	        	
-	        	//Find lastest fixed version
-	        	int fixVers = Issue.FIX_DEF;
-	        	for(int h = 0; h < fixVersions.length(); h++) {
-	        		int currVers = versionIDMap.get(fixVersions.getJSONObject(h).get("id").toString());
-	        		if (currVers > fixVers)
-	        			fixVers = currVers;
-	        	}
-	        	
-	        	if (fixVers != Issue.FIX_DEF)
-	        		issuesMap.put(key, new Issue(key, introVers, openVers ,  fixVers));
-	        	
-	        	//Calculate sums for average
-	        	if (introVers != Issue.INTRO_DEF && fixVers != Issue.FIX_DEF) {
-	        		for(int h = fixVers+1; h < versionIDs.size(); h++) {
-	        			totals[h]++;
-	        			if (fixVers != openVers) {
-	        				averages[h] += (fixVers - introVers)/(fixVers - openVers)*1.0;
-	        				//System.out.println((fixVers - introVers)/(fixVers - openVers)*1.0);
-	        			} else
-	        				averages[h] += (fixVers - introVers);
-	        		}
-	        	}
-	        	//System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
-	        }
 		} while (i < total);
 		
 		//Calculate P averages for each version
@@ -158,7 +214,7 @@ public class GetClassBuggyness {
 				averages[h] = averages[h]/totals[h];
 			else
 				averages[h] = 0;
-			//System.out.println(averages[h] + " " + totals[h]);
+			System.out.println(averages[h] + " " + totals[h]);
 		}
 
 		//Calculate missing IV with proportion
@@ -166,17 +222,23 @@ public class GetClassBuggyness {
 		    String key = entry.getKey();
 		    Issue value = entry.getValue();
 		    if (value.getIntroVersion() == Issue.INTRO_DEF && value.getFixVersion() != Issue.FIX_DEF) {
-		    	value.setIntroVersion(Math.round(value.getFixVersion() - (value.getFixVersion() - value.getOpenVersion())*averages[value.getFixVersion()-1]));
+		    	int newIntroVers = Math.round(value.getFixVersion() - (value.getFixVersion() - value.getOpenVersion())*averages[value.getFixVersion()-1]);
+		    	if (newIntroVers <= 0)
+		    		newIntroVers = 1;
+		    	if (newIntroVers > value.getOpenVersion())
+		    		newIntroVers = value.getOpenVersion();
+		    	value.setIntroVersion(newIntroVers);
 		    	issuesMap.put(key, value);
 		    }
 		}
 		
-//		for (Entry<String, Issue> entry : issuesMap.entrySet()) {
-//		    String key = entry.getKey();
-//		    Issue value = entry.getValue();
-//		    System.out.println(key + " " + value.getIntroVersion() + " " + value.getOpenVersion() + " " + value.getFixVersion());
-//		}
-	
+		
+		
+		  for (Entry<String, Issue> entry : issuesMap.entrySet()) { String key =
+		  entry.getKey(); Issue value = entry.getValue(); System.out.println(key + " "
+		  + value.getIntroVersion() + " " + value.getOpenVersion() + " " +
+		  value.getFixVersion()); }
+		 
 	}
 
 }
