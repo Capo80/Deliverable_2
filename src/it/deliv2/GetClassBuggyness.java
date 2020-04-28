@@ -32,7 +32,69 @@ public class GetClassBuggyness {
 	private static float[] averages;
 	private static int[] totals;
 	private static Git gitManager;
+	private static List<HashMap<String, Boolean>> files;
 	
+	//Function to obtain the full list of files per version
+	private static void getAllFiles() throws IOException {
+		
+		//Initialize list object
+		files = new ArrayList<HashMap<String, Boolean>>();
+		
+		for (int i = 0; i < versionDates.size(); i++) {
+			
+			//Initialize HashMap
+			files.add(new HashMap<String, Boolean>());
+			
+			//Get list of files
+			List<String> curr_files = gitManager.getFilesBeforeDate(versionDates.get(i));
+			
+			System.out.println(curr_files.size());
+			
+			//Add files to hashmap
+			for (int j = 0; j < curr_files.size(); j++) {
+				files.get(i).put(curr_files.get(i), false);
+			}
+		}
+		
+	}
+	
+	//Function that calculates all the missing IV wirh proportion
+	private static void calculateMissingIVs() {
+		
+		for (Entry<String, Issue> entry : issuesMap.entrySet()) {
+		    String key = entry.getKey();
+		    Issue value = entry.getValue();
+		    if (value.getIntroVersion() == Issue.INTRO_DEF && value.getFixVersion() != Issue.FIX_DEF) {
+		    	int newIntroVers = Math.round(value.getFixVersion() - (value.getFixVersion() - value.getOpenVersion())*averages[value.getFixVersion()-1]);
+		    	if (newIntroVers <= 0)
+		    		newIntroVers = 1;
+		    	if (newIntroVers > value.getOpenVersion())
+		    		newIntroVers = value.getOpenVersion();
+		    	value.setIntroVersion(newIntroVers);
+		    	issuesMap.put(key, value);
+		    }
+		}
+	
+	}
+	
+	private static void calculateSums(int introVers, int openVers, int fixVers) {
+		
+    	if (introVers != Issue.INTRO_DEF && fixVers != Issue.FIX_DEF) {
+    		for(int h = fixVers+1; h < versionIDs.size(); h++) {
+    			totals[h]++;
+    			if (fixVers != openVers) {
+    				averages[h] += (fixVers - introVers)*1.0/(fixVers - openVers)*1.0;
+    			} else {
+    				if (openVers != introVers) {
+        				averages[h] += (fixVers - introVers);
+        			} else {
+    					averages[h] += 1;
+    				}
+    			}
+    		}
+    	}
+		
+	}
 	private static HashMap<String, Integer> recoverVersionIDs(String fileName) throws FileNotFoundException {
 		
 		HashMap<String, Integer> versionIDs = new HashMap<String, Integer>();
@@ -95,7 +157,7 @@ public class GetClassBuggyness {
     	int fixVers = Issue.FIX_DEF;
     	
     	String lastCommitDate = gitManager.getLastCommitDate(key);
-    	if (lastCommitDate != "")
+    	if (lastCommitDate.compareTo("") != 0)
     		fixVers =  getIDfromDate(lastCommitDate);
     	
     	if (fixVers != Issue.FIX_DEF)
@@ -157,19 +219,9 @@ public class GetClassBuggyness {
         		issuesMap.put(key, new Issue(key, introVers, openVers ,  fixVers));
         	
         	//Calculate sums for average
-        	if (introVers != Issue.INTRO_DEF && fixVers != Issue.FIX_DEF) {
-        		for(int h = fixVers+1; h < versionIDs.size(); h++) {
-        			totals[h]++;
-        			if (fixVers != openVers) {
-        				averages[h] += (fixVers - introVers)*1.0/(fixVers - openVers)*1.0;
-        				System.out.println((fixVers - introVers)+ " " + (fixVers - openVers) + " " + (fixVers - introVers)*1.0/(fixVers - openVers)*1.0);
-        			} else {
-        				averages[h] += (fixVers - introVers);
-        				System.out.println((fixVers - introVers));            			
-        			}
-        		}
-        	}
-        	System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
+        	calculateSums(introVers, openVers, fixVers);
+        	
+        	//System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
         }
 		
 	}
@@ -216,28 +268,19 @@ public class GetClassBuggyness {
 				averages[h] = 0;
 			System.out.println(averages[h] + " " + totals[h]);
 		}
+		
 
 		//Calculate missing IV with proportion
-		for (Entry<String, Issue> entry : issuesMap.entrySet()) {
-		    String key = entry.getKey();
-		    Issue value = entry.getValue();
-		    if (value.getIntroVersion() == Issue.INTRO_DEF && value.getFixVersion() != Issue.FIX_DEF) {
-		    	int newIntroVers = Math.round(value.getFixVersion() - (value.getFixVersion() - value.getOpenVersion())*averages[value.getFixVersion()-1]);
-		    	if (newIntroVers <= 0)
-		    		newIntroVers = 1;
-		    	if (newIntroVers > value.getOpenVersion())
-		    		newIntroVers = value.getOpenVersion();
-		    	value.setIntroVersion(newIntroVers);
-		    	issuesMap.put(key, value);
-		    }
-		}
+		calculateMissingIVs();
 		
-		
-		
-		  for (Entry<String, Issue> entry : issuesMap.entrySet()) { String key =
-		  entry.getKey(); Issue value = entry.getValue(); System.out.println(key + " "
-		  + value.getIntroVersion() + " " + value.getOpenVersion() + " " +
-		  value.getFixVersion()); }
+		//Recover filenames per version
+		getAllFiles();
+		/*
+		 * for (Entry<String, Issue> entry : issuesMap.entrySet()) { String key =
+		 * entry.getKey(); Issue value = entry.getValue(); System.out.println(key + " "
+		 * + value.getIntroVersion() + " " + value.getOpenVersion() + " " +
+		 * value.getFixVersion()); }
+		 */
 		 
 	}
 

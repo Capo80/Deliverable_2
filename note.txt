@@ -1,0 +1,8 @@
+Calcolo di P
+
+Alcuni ticket hanno IV > OV (impossbile) in tal caso butto la IV e la ricalcolo con Proportion
+
+P non può essere < quindi se FV == IV == OV -> P = 1
+			  se FV == OV != IV -> P = FV - IV
+
+

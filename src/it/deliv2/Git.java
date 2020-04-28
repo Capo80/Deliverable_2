@@ -75,4 +75,11 @@ public class Git {
 		return lastCommitDate;
 		
 	}
+	
+	//Date must be ISO strict
+	public List<String> getFilesBeforeDate(String date) throws IOException {
+		
+		return runCommand("git", "log", "--diff-filter=A", "--no-commit-id", "--name-only", "--until", date);
+		
+	}
 }
