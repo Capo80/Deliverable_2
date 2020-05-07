@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,12 +47,12 @@ public class Git {
 		ProcessBuilder pb = new ProcessBuilder()
 				.command(command)
 				.directory(repository.toFile());
-		Process p = pb.start();                                                                                                                                                   
+		Process p = pb.start();                       
 		BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
 		String s;
 		ArrayList<String> toReturn = new ArrayList<>();
 		while ((s = stdInput.readLine()) != null) {
-		        toReturn.add(s);
+				toReturn.add(s);
 		}
 		return toReturn;
 	}
@@ -80,6 +81,31 @@ public class Git {
 	public List<String> getFilesBeforeDate(String date) throws IOException {
 		
 		return runCommand("git", "log", "--diff-filter=A", "--no-commit-id", "--name-only", "--until", date);
+		
+	}
+	
+	public List<String> getFilesByKey(String key) throws IOException {
+
+		return runCommand("git", "log", "-p", "--name-only", "--format=" , "--grep="+key);
+	}
+	
+	public HashMap<String, String> getFileModififications(String filename) throws IOException {
+		
+		//Recover all modifications
+		List<String> output = runCommand("git", "log", "--format=\"%aI\"", "--numstat", "--follow", "--", filename);
+		
+		HashMap<String, String> info = new HashMap<String, String>();
+		
+		//Interpret output and return it
+		for (int s = 0; s < output.size(); s++ ) {
+    		Matcher m = date.matcher(output.get(s));
+			if (m.find()) {
+				String[] splitted = output.get(s+2).split("\t");
+				info.put(m.group(0), splitted[0] + " " + splitted[1]);
+			}
+		}
+		
+		return info;
 		
 	}
 }

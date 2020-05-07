@@ -34,6 +34,36 @@ public class GetClassBuggyness {
 	private static Git gitManager;
 	private static List<HashMap<String, Boolean>> files;
 	
+	//Save the file information to a csv
+	private static void saveToCSV(String fileName) throws IOException {
+		
+		File newCSV = new File(fileName);
+		if (!newCSV.exists())
+			newCSV.createNewFile();
+		
+		try (FileWriter fw = new FileWriter(newCSV)) {
+			
+			fw.write("Version, File, Buggy\n");
+			
+			//Iterate trought versions
+			for (int i = 0;  i < files.size(); i++) {
+				
+				//Iterate trought single files
+				for (Entry<String, Boolean> entry : files.get(i).entrySet()) { 
+					//System.out.println(entry.getValue());
+					if (entry.getValue())
+						fw.write(i+1 + ", " + entry.getKey() + ", Yes\n" );
+					else
+						fw.write(i+1 + ", " + entry.getKey() + ", No\n" );
+					
+				}
+				
+			}
+		}
+		
+		
+	}
+	
 	//Function to obtain the full list of files per version
 	private static void getAllFiles() throws IOException {
 		
@@ -48,17 +78,44 @@ public class GetClassBuggyness {
 			//Get list of files
 			List<String> curr_files = gitManager.getFilesBeforeDate(versionDates.get(i));
 			
-			System.out.println(curr_files.size());
+			
+			//System.out.println(curr_files.size());
 			
 			//Add files to hashmap
 			for (int j = 0; j < curr_files.size(); j++) {
-				files.get(i).put(curr_files.get(i), false);
+				files.get(i).put(curr_files.get(j), false);
 			}
 		}
 		
 	}
 	
-	//Function that calculates all the missing IV wirh proportion
+	//Function that sets each file as buggy based on the issuemap
+	private static void setBuggyness() throws IOException {
+		
+		
+		//Iterate trought each key
+		for (Entry<String, Issue> entry : issuesMap.entrySet()) { 
+			
+			String key = entry.getKey();
+			Issue issue = entry.getValue();
+			
+			//Recover all files modified while working on this issue
+			List<String> modFiles = gitManager.getFilesByKey(key);
+			
+			//System.out.println(modFiles.size());
+			//For every affected version set each file to buggy
+			for (int i = issue.getIntroVersion()-1; i < issue.getFixVersion()-1; i++) {
+				for (int j = 0; j < modFiles.size(); j++) {
+					if (files.get(i).get(modFiles.get(j)) != null)	
+						files.get(i).put(modFiles.get(j), true);
+				}
+			}
+		  
+		}
+	
+	}
+	
+	//Function that calculates all the missing IV with proportion
 	private static void calculateMissingIVs() {
 		
 		for (Entry<String, Issue> entry : issuesMap.entrySet()) {
@@ -275,12 +332,20 @@ public class GetClassBuggyness {
 		
 		//Recover filenames per version
 		getAllFiles();
+		
+		//Find if a file is bugged
+		setBuggyness();
+		
+		//Save everything to a .csv
+		saveToCSV(projName+"BuggynessInfo.csv");
+		
 		/*
 		 * for (Entry<String, Issue> entry : issuesMap.entrySet()) { String key =
 		 * entry.getKey(); Issue value = entry.getValue(); System.out.println(key + " "
 		 * + value.getIntroVersion() + " " + value.getOpenVersion() + " " +
 		 * value.getFixVersion()); }
 		 */
+		 
 		 
 	}
 
