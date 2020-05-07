@@ -78,9 +78,15 @@ public class Git {
 	}
 	
 	//Date must be ISO strict
-	public List<String> getFilesBeforeDate(String date) throws IOException {
+	public List<String> getFilesAddedBeforeDate(String date) throws IOException {
 		
 		return runCommand("git", "log", "--diff-filter=A", "--no-commit-id", "--name-only", "--until", date);
+		
+	}
+	
+	public List<String> getFilesModifiedBeforeDate(String date) throws IOException {
+		
+		return runCommand("git", "log", "--format='%an'", "--name-only", "--until="+date);
 		
 	}
 	
@@ -89,10 +95,11 @@ public class Git {
 		return runCommand("git", "log", "-p", "--name-only", "--format=" , "--grep="+key);
 	}
 	
-	public HashMap<String, String> getFileModififications(String filename) throws IOException {
+	// TODO currently broken -- Incorporate in get files modified
+	public HashMap<String, String> getFileModififications(String dateIn) throws IOException {
 		
 		//Recover all modifications
-		List<String> output = runCommand("git", "log", "--format=\"%aI\"", "--numstat", "--follow", "--", filename);
+		List<String> output = runCommand("git", "log", "--format=\"%aI\"", "--numstat", "--until="+dateIn);
 		
 		HashMap<String, String> info = new HashMap<String, String>();
 		

@@ -76,7 +76,7 @@ public class GetClassBuggyness {
 			files.add(new HashMap<String, Boolean>());
 			
 			//Get list of files
-			List<String> curr_files = gitManager.getFilesBeforeDate(versionDates.get(i));
+			List<String> curr_files = gitManager.getFilesAddedBeforeDate(versionDates.get(i));
 			
 			
 			//System.out.println(curr_files.size());

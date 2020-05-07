@@ -8,6 +8,10 @@ public class Loc {
 	int averageAdded;
 	int maxAdded;
 	int maxRemoved;
+	int totalChurn;
+	int averageChurn;
+	int maxChurn;
+	
 	
 	public Loc() {
 		this.totalAdded = 0;
@@ -18,6 +22,34 @@ public class Loc {
 		this.maxRemoved = 0;
 	}
 	
+	public void addTotalChurn(int toAdd) {
+		this.totalChurn += toAdd;	
+	}
+	
+	public int getTotalChurn() {
+		return totalChurn;
+	}
+
+	public void setTotalChurn(int totalChurn) {
+		this.totalChurn = totalChurn;
+	}
+
+	public int getAverageChurn() {
+		return averageChurn;
+	}
+
+	public void setAverageChurn(int averageChurn) {
+		this.averageChurn = averageChurn;
+	}
+
+	public int getMaxChurn() {
+		return maxChurn;
+	}
+
+	public void setMaxChurn(int maxChurn) {
+		this.maxChurn = maxChurn;
+	}
+
 	public void addTotalAdded(int toAdd) {
 		this.totalAdded += toAdd;	
 	}
