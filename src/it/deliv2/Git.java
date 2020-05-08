@@ -79,14 +79,14 @@ public class Git {
 	
 	//Date must be ISO strict
 	public List<String> getFilesAddedBeforeDate(String date) throws IOException {
-		
-		return runCommand("git", "log", "--diff-filter=A", "--no-commit-id", "--name-only", "--until", date);
+
+		return runCommand("git", "log", "--format='%an'", "--name-only", "--no-commit-id", "--until="+date);
 		
 	}
 	
 	public List<String> getFilesModifiedBeforeDate(String date) throws IOException {
 		
-		return runCommand("git", "log", "--format='%an'", "--name-only", "--until="+date);
+		return runCommand("git", "log", "--format='%an'", "--numstat", "--until="+date);
 		
 	}
 	
@@ -95,24 +95,5 @@ public class Git {
 		return runCommand("git", "log", "-p", "--name-only", "--format=" , "--grep="+key);
 	}
 	
-	// TODO currently broken -- Incorporate in get files modified
-	public HashMap<String, String> getFileModififications(String dateIn) throws IOException {
-		
-		//Recover all modifications
-		List<String> output = runCommand("git", "log", "--format=\"%aI\"", "--numstat", "--until="+dateIn);
-		
-		HashMap<String, String> info = new HashMap<String, String>();
-		
-		//Interpret output and return it
-		for (int s = 0; s < output.size(); s++ ) {
-    		Matcher m = date.matcher(output.get(s));
-			if (m.find()) {
-				String[] splitted = output.get(s+2).split("\t");
-				info.put(m.group(0), splitted[0] + " " + splitted[1]);
-			}
-		}
-		
-		return info;
-		
-	}
+
 }

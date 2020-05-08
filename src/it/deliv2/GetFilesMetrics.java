@@ -28,8 +28,10 @@ public class GetFilesMetrics {
 	private static void saveToCSV(String fileName) throws IOException {
 		
 		File newCSV = new File(fileName);
-		if (!newCSV.exists())
-			newCSV.createNewFile();
+		if (newCSV.exists())
+			newCSV.delete();
+		
+		newCSV.createNewFile();
 		
 		try (FileWriter fw = new FileWriter(newCSV)) {
 			
@@ -42,14 +44,29 @@ public class GetFilesMetrics {
 				for (Entry<String, Loc> entry : filesLocInfo.get(i).entrySet()) { 
 					//System.out.println(entry.getValue());
 					Loc infoLoc = entry.getValue();
+					
+					//Lower bound of theese values must be 0
+					int size = (infoLoc.getTotalAdded()-infoLoc.getTotalRemoved());
+					if (size < 0)
+						size = 0;
+					if (infoLoc.getTotalChurn() < 0)
+						infoLoc.setTotalChurn(0);
+
+					if (infoLoc.getAverageChurn() < 0)
+						infoLoc.setAverageChurn(0);
+
+					if (infoLoc.getMaxChurn() < 0)
+						infoLoc.setMaxChurn(0);
+					
+					
 					ChgSet infoChg = filesChg.get(i).get(entry.getKey());
-					fw.write(i+1 + ", " + entry.getKey() + ", " + (infoLoc.getTotalAdded()-infoLoc.getTotalRemoved()) + ", " +
+					fw.write(i+1 + ", " + entry.getKey() + ", " + size + ", " +
 					(infoLoc.getTotalAdded()+infoLoc.getTotalRemoved()) + ", "+ infoLoc.getTotalAdded() + ", " + 
-					infoLoc.getAverageAdded() + ", " + infoLoc.getMaxAdded() + ", " + 
+					infoLoc.getMaxAdded() + ", " + infoLoc.getAverageAdded() + ", " + 
 					infoLoc.getTotalChurn() + ", " + infoLoc.getMaxChurn() + ", " + infoLoc.getAverageChurn() + ", " +
 					infoChg.getTotalChg() + ", " + infoChg.getMaxChg() + ", " + infoChg.getAverageChg() + ", " +
 					filesRevisions.get(i).get(entry.getKey()) + ", " +
-					filesAuthors.get(i).get(entry.getKey()).getTotal() +"\n");
+					filesAuthors.get(i).get(entry.getKey()).getTotal() + "\n");
 					
 				}
 				
@@ -79,17 +96,6 @@ public class GetFilesMetrics {
 		}
 		
 		
-	}
-	
-	private static int getIDfromDate(String date) {
-    	int m = 0;
-    	while (m < versionDates.size() && date.compareTo(versionDates.get(m)) > 0) {
-    		m++;
-    	}
-    	if (m >= versionIDs.size())
-    		return Issue.FIX_DEF;
-    	else
-    		return versionIDs.get(m);
 	}
 	
 	private static void updateAuthors(List<String> files, String author, int version) {
@@ -144,11 +150,60 @@ public class GetFilesMetrics {
 		
 		
 	}
+	
+	private static void updateLoc(int added, int removed, String filename, int version) {
+		
+		Loc toAdd = filesLocInfo.get(version).get(filename);
+		
+		int churn = added-removed;
+		//System.out.println(filename + " " + values[0] + " " + values[1]);
+		//Check if the file has been seen before
+		if (toAdd == null) {
+			//if not i set all the values
+			toAdd = new Loc();
+			toAdd.addTotalAdded(added);
+			toAdd.addTotalRemoved(removed);
+			toAdd.addTotalChurn(churn);
+			toAdd.setMaxChurn(churn);
+			toAdd.setMaxAdded(added);
+			toAdd.setMaxRemoved(removed);
+			toAdd.setAverageAdded(added);
+			toAdd.setAverageRemoved(removed);
+			toAdd.setAverageChurn(churn);
+			toAdd.increaseUpdates();
+			filesLocInfo.get(version).put(filename, toAdd);
+		} else {
+			//if it is we update the values un hashmap
+			toAdd.addTotalAdded(added);
+			toAdd.addTotalRemoved(removed);
+			toAdd.addTotalChurn(churn);
+			toAdd.increaseUpdates();
+			
+			if (toAdd.getMaxChurn() < churn)
+				toAdd.setMaxChurn(churn);
+
+			if (toAdd.getMaxAdded() < added)
+				toAdd.setMaxAdded(added);
+
+			if (toAdd.getAverageRemoved() < removed)
+				toAdd.setMaxRemoved(removed);
+		
+			toAdd.setAverageAdded((int) Math.round(toAdd.getTotalAdded()*1.0/toAdd.getUpdates()*1.0));
+			toAdd.setAverageRemoved((int) Math.round(toAdd.getTotalRemoved()*1.0/toAdd.getUpdates()*1.0));
+			toAdd.setAverageChurn((int) Math.round(toAdd.getTotalChurn()*1.0/toAdd.getUpdates()*1.0));
+			
+			filesLocInfo.get(version).put(filename, toAdd);
+			
+		}
+		
+		
+	}
 	private static void getAllModifications() throws IOException {
 		
 		filesRevisions = new ArrayList<HashMap<String, Integer>>();
 		filesAuthors = new ArrayList<HashMap<String,Authors>>();
 		filesChg = new ArrayList<HashMap<String,ChgSet>>();
+		filesLocInfo = new ArrayList<HashMap<String, Loc>>();
 		
 		for (int i = 0; i < versionDates.size(); i++) {
 			
@@ -156,6 +211,7 @@ public class GetFilesMetrics {
 			filesRevisions.add(new HashMap<String, Integer>());
 			filesAuthors.add(new HashMap<String, Authors>());
 			filesChg.add(new HashMap<String, ChgSet>());
+			filesLocInfo.add(new HashMap<String, Loc>());
 			
 			System.out.println("\n---\n" + i + "\n-----");
 			
@@ -181,99 +237,39 @@ public class GetFilesMetrics {
 					curr_files = new ArrayList<String>();
 				} else {					
 					//Count revision
-					if (filesRevisions.get(i).get(curr) == null)
-						filesRevisions.get(i).put(curr, 1);
-					else
-						filesRevisions.get(i).put(curr, filesRevisions.get(i).get(curr)+1);
-					
-					//Add to file list
-					curr_files.add(curr);
+					String[] values = curr.split("\t");
+					try {
+						int added = Integer.parseInt(values[0]);
+						int removed = Integer.parseInt(values[1]);
+						
+						//Ignore movement of files
+						if (!values[2].contains("=>")) {
+							//Update count of revisions
+							if (filesRevisions.get(i).get(values[2]) == null)
+								filesRevisions.get(i).put(values[2], 1);
+							else
+								filesRevisions.get(i).put(values[2], filesRevisions.get(i).get(values[2])+1);
+							
+							//Add to file list
+							curr_files.add(values[2]);
+							
+							//Update LOC
+							updateLoc(added, removed, values[2], i);
+						}
+
+					} catch(NumberFormatException e) {
+						//Added and removed not available
+						//do nothing
+					}
+
 				}
 			}
 		}
 		
 		
 	}
-	//Function to obtain the full list of files per version
-	private static void getAllFiles() throws IOException {
-		
-		//Initialize list object
-		filesLocInfo = new ArrayList<HashMap<String, Loc>>();
-		
-		for (int i = 0; i < versionDates.size(); i++) {
-			
-			//Initialize HashMap
-			filesLocInfo.add(new HashMap<String, Loc>());
-			
-			//Get list of files
-			List<String> curr_files = gitManager.getFilesAddedBeforeDate(versionDates.get(i));
-			
-			
-			//System.out.println(curr_files.size());
-			
-			//Add files to hashmap
-			for (int j = 0; j < curr_files.size(); j++) {
-				try {	
-					Loc info = getLocFile(curr_files.get(j), i+1);
-					filesLocInfo.get(i).put(curr_files.get(j), info);
-					
-					//System.out.println(i+1 + ", " + curr_files.get(j) + ", " + (info.getTotalAdded()-info.getTotalRemoved()) + ", " + (info.getTotalAdded()+info.getTotalRemoved()) + ", "+ info.getTotalAdded() + ", " + info.getAverageAdded() + ", " + info.getMaxAdded());
-					System.out.println(i+1 + ", " + curr_files.get(j) + ", " + info.getTotalChurn() +", " + info.getAverageChurn() + ", " + info.getMaxChurn());
-				}
-				catch (NumberFormatException e) {
-					//do nothing
-				}
-			}
-		}
-		
-	}
+
 	
-	
-	private static Loc getLocFile(String filename, int version) throws IOException, NumberFormatException {
-		
-		HashMap<String, String> infoLoc = gitManager.getFileModififications(filename);
-		
-		Loc toRet = new Loc();
-		int total = 0;
-		for (Entry<String, String> entry : infoLoc.entrySet()) { 
-			
-			String key = entry.getKey();
-			int id = getIDfromDate(key);
-			if (id <= version && id != -1) {
-				String[] values = entry.getValue().split(" ");
-				
-				int added = Integer.parseInt(values[0]);
-				int removed = Integer.parseInt(values[1]);
-				int churn = added-removed;
-				//System.out.println(filename + " " + values[0] + " " + values[1]);
-				toRet.addTotalAdded(added);
-				toRet.addTotalRemoved(removed);
-				toRet.addTotalChurn(churn);
-				total++;
-				
-				if (toRet.getMaxChurn() < churn)
-					toRet.setMaxChurn(churn);
-
-				if (toRet.getMaxAdded() < added)
-					toRet.setMaxAdded(added);
-
-				if (toRet.getAverageRemoved() < removed)
-					toRet.setMaxAdded(removed);
-
-			}
-			
-			//String value = entry.getValue();
-			//System.out.println(key + " "+ value + " " + getIDfromDate(key) + " " + (getIDfromDate(key) <= version && id != -1)); 
-		}
-		if (total != 0) {
-			toRet.setAverageAdded((int) Math.round(toRet.getTotalAdded()*1.0/total*1.0));
-			toRet.setAverageRemoved((int) Math.round(toRet.getTotalRemoved()*1.0/total*1.0));
-			toRet.setAverageChurn((int) Math.round(toRet.getTotalChurn()*1.0/total*1.0));
-		}
-		//System.out.println(toRet.getAdded() + " " + toRet.getRemoved() + " " + (toRet.getAdded() - toRet.getRemoved())); 
-		
-		return toRet;
-	}
 	public static void main(String[] args) throws IOException {
 
 		gitManager = new Git(repoURL, "..");
@@ -314,9 +310,8 @@ public class GetFilesMetrics {
 		}
 		
 		
-		getAllFiles();
 
-		//saveToCSV(projName+"metrics.csv");
+		saveToCSV(projName+"metrics.csv");
 	}
 
 }

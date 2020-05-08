@@ -2,15 +2,16 @@ package it.deliv2;
 
 public class Loc {
 
-	int totalAdded;
-	int totalRemoved;
-	int averageRemoved;
-	int averageAdded;
-	int maxAdded;
-	int maxRemoved;
-	int totalChurn;
-	int averageChurn;
-	int maxChurn;
+	private int totalAdded;
+	private int totalRemoved;
+	private int averageRemoved;
+	private int averageAdded;
+	private int maxAdded;
+	private int maxRemoved;
+	private int totalChurn;
+	private int averageChurn;
+	private int maxChurn;
+	private int updates;
 	
 	
 	public Loc() {
@@ -20,8 +21,16 @@ public class Loc {
 		this.averageRemoved = 0;
 		this.maxAdded = 0;
 		this.maxRemoved = 0;
+		this.updates = 0;
 	}
 	
+	public void increaseUpdates() {
+		this.updates++;
+	}
+	
+	public int getUpdates() {
+		return updates;
+	}
 	public void addTotalChurn(int toAdd) {
 		this.totalChurn += toAdd;	
 	}

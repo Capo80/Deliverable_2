@@ -76,14 +76,20 @@ public class GetClassBuggyness {
 			files.add(new HashMap<String, Boolean>());
 			
 			//Get list of files
-			List<String> curr_files = gitManager.getFilesAddedBeforeDate(versionDates.get(i));
+			List<String> curr_files = gitManager.getFilesModifiedBeforeDate(versionDates.get(i));
 			
 			
 			//System.out.println(curr_files.size());
 			
 			//Add files to hashmap
 			for (int j = 0; j < curr_files.size(); j++) {
-				files.get(i).put(curr_files.get(j), false);
+				
+				String curr = curr_files.get(j);
+				System.out.println(curr);
+				String[] values = curr.split("\t");
+				//Some file dont have the info necessary to calculate the metrics - i remove them
+				if (!curr.startsWith("'") && values.length == 3 && values[0].compareTo("-") != 0 && values[1].compareTo("-") != 0 && !curr.contains("=>"))
+					files.get(i).put(values[2], false);
 			}
 		}
 		
