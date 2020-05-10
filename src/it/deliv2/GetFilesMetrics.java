@@ -1,6 +1,5 @@
 package it.deliv2;
 
-import java.awt.BufferCapabilities.FlipContents;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -9,13 +8,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.Map.Entry;
+
+import it.deliv2.helpers.Filenames;
+import it.deliv2.helpers.Git;
+import it.deliv2.metrics.Authors;
+import it.deliv2.metrics.ChgSet;
+import it.deliv2.metrics.Loc;
 
 public class GetFilesMetrics {
 
 	private static Git gitManager;
-	private static String projName = "BOOKKEEPER";
-	private static String versionFileName = projName + "VersionInfo.csv";
+	private static String projName = Filenames.projName;
+	private static String versionFileName = Filenames.versFile;
 	private static String repoURL = "https://github.com/Capo80/"+projName.toLowerCase()+".git";
 	private static List<HashMap<String, Loc>> filesLocInfo;
 	private static List<HashMap<String, Integer>> filesRevisions;
@@ -27,14 +34,15 @@ public class GetFilesMetrics {
 	//Save the file information to a csv
 	private static void saveToCSV(String fileName) throws IOException {
 		
+		//Create file if it does not exist
 		File newCSV = new File(fileName);
-		if (newCSV.exists())
-			newCSV.delete();
+		if (!newCSV.exists())
+			newCSV.createNewFile();
 		
-		newCSV.createNewFile();
 		
 		try (FileWriter fw = new FileWriter(newCSV)) {
 			
+			//First line
 			fw.write("Version, File, size, LOC_touched, LOC_added, MAX_LOC_Added, AVG_LOC_Added, Churn, MAX_Churn, AVG_Churn, ChgSetSize, MAX_ChgSet, AVG_CHGSET, NR, NAuth\n");
 			
 			//Iterate trought versions
@@ -42,7 +50,7 @@ public class GetFilesMetrics {
 				
 				//Iterate trought single files
 				for (Entry<String, Loc> entry : filesLocInfo.get(i).entrySet()) { 
-					//System.out.println(entry.getValue());
+					
 					Loc infoLoc = entry.getValue();
 					
 					//Lower bound of theese values must be 0
@@ -58,7 +66,7 @@ public class GetFilesMetrics {
 					if (infoLoc.getMaxChurn() < 0)
 						infoLoc.setMaxChurn(0);
 					
-					
+					//Write all metrics
 					ChgSet infoChg = filesChg.get(i).get(entry.getKey());
 					fw.write(i+1 + ", " + entry.getKey() + ", " + size + ", " +
 					(infoLoc.getTotalAdded()+infoLoc.getTotalRemoved()) + ", "+ infoLoc.getTotalAdded() + ", " + 
@@ -76,6 +84,7 @@ public class GetFilesMetrics {
 		
 	}
 	
+	//Initialize version dates taking values from the file
 	private static void initVersionDates(String fileName) throws FileNotFoundException {
 		
 		File versionCSV = new File(fileName);
@@ -84,6 +93,7 @@ public class GetFilesMetrics {
 			
 			versionDates = new ArrayList<>();
 			versionIDs = new ArrayList<>();
+			
 			//Throw away first line
 			fr.nextLine();
 			
@@ -98,11 +108,15 @@ public class GetFilesMetrics {
 		
 	}
 	
+	//Function that updates the number of authors of a list of files in a specific version
 	private static void updateAuthors(List<String> files, String author, int version) {
 		
+		//Iterate trhoug files
 		for (int h = 0; h < files.size(); h++) {
+			
 			String curr = files.get(h);
 			Authors currAuth = filesAuthors.get(version).get(curr);
+			
 			//Check if file is in HASH
 			if (currAuth == null) {
 				//Add it if its not
@@ -121,29 +135,38 @@ public class GetFilesMetrics {
 		}
 	}
 	
+	//Function that updates the ChgSet of a list of files in a specific version
 	private static void updateChg(List<String> files, int version) {
 		
 		//Every file has a chg of files.size()-1
 		int chgToAdd = files.size()-1; 
+		
+		//Iterate trough files
 		for (int h = 0; h < files.size(); h++) {
 			String curr = files.get(h);
 			ChgSet currChg = filesChg.get(version).get(curr);
 			
 			//Check if file is in HASH
 			if (currChg == null) {
+			
 				//Add it if its not
 				ChgSet newChg = new ChgSet();
 				newChg.addTotal(chgToAdd);
 				newChg.setMaxChg(chgToAdd);
 				newChg.setAverageChg(chgToAdd);
+				
+				//Update structure
 				filesChg.get(version).put(curr, newChg);
 			}
 			else {
+				
 				//Update statistics
 				currChg.addTotal(chgToAdd);
 				if (currChg.getMaxChg() < chgToAdd)
 					currChg.setMaxChg(chgToAdd);
 				currChg.setAverageChg((int) Math.round(currChg.getTotalChg()*1.0/currChg.getUpdates()*1.0));
+				
+				//Update structure
 				filesChg.get(version).put(curr, currChg);
 			}
 		}
@@ -151,34 +174,44 @@ public class GetFilesMetrics {
 		
 	}
 	
+	//Functions that updates the Loc of a file in a specific version
 	private static void updateLoc(int added, int removed, String filename, int version) {
 		
 		Loc toAdd = filesLocInfo.get(version).get(filename);
 		
 		int churn = added-removed;
-		//System.out.println(filename + " " + values[0] + " " + values[1]);
+		
 		//Check if the file has been seen before
 		if (toAdd == null) {
-			//if not i set all the values
+			//if its not i set all the values
+			
 			toAdd = new Loc();
 			toAdd.addTotalAdded(added);
 			toAdd.addTotalRemoved(removed);
 			toAdd.addTotalChurn(churn);
+			
 			toAdd.setMaxChurn(churn);
 			toAdd.setMaxAdded(added);
 			toAdd.setMaxRemoved(removed);
+			
 			toAdd.setAverageAdded(added);
 			toAdd.setAverageRemoved(removed);
 			toAdd.setAverageChurn(churn);
+			
 			toAdd.increaseUpdates();
+			
+			//Update the structure
 			filesLocInfo.get(version).put(filename, toAdd);
 		} else {
 			//if it is we update the values un hashmap
+			
+			//Add totals
 			toAdd.addTotalAdded(added);
 			toAdd.addTotalRemoved(removed);
 			toAdd.addTotalChurn(churn);
 			toAdd.increaseUpdates();
 			
+			//Calculate max
 			if (toAdd.getMaxChurn() < churn)
 				toAdd.setMaxChurn(churn);
 
@@ -188,82 +221,97 @@ public class GetFilesMetrics {
 			if (toAdd.getAverageRemoved() < removed)
 				toAdd.setMaxRemoved(removed);
 		
+			//Calculate averages
 			toAdd.setAverageAdded((int) Math.round(toAdd.getTotalAdded()*1.0/toAdd.getUpdates()*1.0));
 			toAdd.setAverageRemoved((int) Math.round(toAdd.getTotalRemoved()*1.0/toAdd.getUpdates()*1.0));
 			toAdd.setAverageChurn((int) Math.round(toAdd.getTotalChurn()*1.0/toAdd.getUpdates()*1.0));
 			
+			//Add info to structure
 			filesLocInfo.get(version).put(filename, toAdd);
 			
 		}
 		
 		
 	}
-	private static void getAllModifications() throws IOException {
+	
+	//Function that analizes the version
+	private static void analizeVersion(int version) throws IOException {
 		
-		filesRevisions = new ArrayList<HashMap<String, Integer>>();
-		filesAuthors = new ArrayList<HashMap<String,Authors>>();
-		filesChg = new ArrayList<HashMap<String,ChgSet>>();
-		filesLocInfo = new ArrayList<HashMap<String, Loc>>();
+		//Initialize HashMap
+		filesRevisions.add(new HashMap<>());
+		filesAuthors.add(new HashMap<>());
+		filesChg.add(new HashMap<>());
+		filesLocInfo.add(new HashMap<>());
 		
-		for (int i = 0; i < versionDates.size(); i++) {
+		//Log progress
+		Logger logger = Logger.getLogger("metrics");
+		logger.log(Level.INFO, "Analized version " + version);
+		
+		//Get all commits in the version
+		List<String> info = gitManager.getFilesModifiedBeforeDate(versionDates.get(version));
+		List<String> curr_files = new ArrayList<>();
+		
+		//Analize commits one by one
+		for (int j = 0; j < info.size(); j++) {
 			
-			//Initialize HashMap
-			filesRevisions.add(new HashMap<String, Integer>());
-			filesAuthors.add(new HashMap<String, Authors>());
-			filesChg.add(new HashMap<String, ChgSet>());
-			filesLocInfo.add(new HashMap<String, Loc>());
+			String curr = info.get(j);
 			
-			System.out.println("\n---\n" + i + "\n-----");
-			
-			List<String> info = gitManager.getFilesModifiedBeforeDate(versionDates.get(i));
-			List<String> curr_files = new ArrayList<String>();
-			
-			for (int j = 0; j < info.size(); j++) {
+			//Check if author or filename
+			if (info.get(j).startsWith("'")) {
 				
-				String curr = info.get(j);
-				System.out.println(curr);
+				//If it is an autor, it means one commit is over, we update Authors and chgset
+				updateAuthors(curr_files, info.get(j), version);
+				updateChg(curr_files, version);
 				
-				//Check if author or filename
-				if (info.get(j).startsWith("'")) {
-					System.out.println("Auth: " + info.get(j));
-					updateAuthors(curr_files, info.get(j), i);
-					updateChg(curr_files, i);
+				curr_files = new ArrayList<>();
+				
+			} else {
+				
+				//Separate filename from lines added and removed
+				String[] values = curr.split("\t");
+				
+				//Try catch beacuse some files have no info
+				try {
 					
-					//System.out.println("-----");
-					//for(int m = 0; m < curr_files.size(); m++)
-					//	System.out.println(curr_files.get(m));
-					//System.out.println(curr_files.size());
-					//System.out.println("-----");
-					curr_files = new ArrayList<String>();
-				} else {					
-					//Count revision
-					String[] values = curr.split("\t");
-					try {
-						int added = Integer.parseInt(values[0]);
-						int removed = Integer.parseInt(values[1]);
+					int added = Integer.parseInt(values[0]);
+					int removed = Integer.parseInt(values[1]);
+					
+					//Ignore movement of files
+					if (!values[2].contains("=>")) {
+						//Update count of revisions
+						if (filesRevisions.get(version).get(values[2]) == null)
+							filesRevisions.get(version).put(values[2], 1);
+						else
+							filesRevisions.get(version).put(values[2], filesRevisions.get(version).get(values[2])+1);
 						
-						//Ignore movement of files
-						if (!values[2].contains("=>")) {
-							//Update count of revisions
-							if (filesRevisions.get(i).get(values[2]) == null)
-								filesRevisions.get(i).put(values[2], 1);
-							else
-								filesRevisions.get(i).put(values[2], filesRevisions.get(i).get(values[2])+1);
-							
-							//Add to file list
-							curr_files.add(values[2]);
-							
-							//Update LOC
-							updateLoc(added, removed, values[2], i);
-						}
-
-					} catch(NumberFormatException e) {
-						//Added and removed not available
-						//do nothing
+						//Add to file list
+						curr_files.add(values[2]);
+						
+						//Update LOC
+						updateLoc(added, removed, values[2], version);
 					}
 
+				} catch(NumberFormatException e) {
+					//Added and removed not available
+					//do nothing
 				}
+
 			}
+		}
+	}
+	
+	
+	//Function that calculates the metrics
+	private static void getAllModifications() throws IOException {
+		
+		//Initialize all the structures to hold the calculations
+		filesRevisions = new ArrayList<>();
+		filesAuthors = new ArrayList<>();
+		filesChg = new ArrayList<>();
+		filesLocInfo = new ArrayList<>();
+		
+		for (int i = 0; i < versionDates.size(); i++) {
+			analizeVersion(i);
 		}
 		
 		
@@ -275,43 +323,11 @@ public class GetFilesMetrics {
 		gitManager = new Git(repoURL, "..");
 		initVersionDates(versionFileName);
 		
+		//Read all commits
 		getAllModifications();
-		for (int i = 0;  i < filesRevisions.size(); i++) {
-			
-			//Iterate trought single files
-			for (Entry<String, Integer> entry : filesRevisions.get(i).entrySet()) { 
-				//System.out.println(entry.getValue());
-				//System.out.println(entry.getKey() + " " + entry.getValue());
-			}
-			
-		}
-		for (int i = 0;  i < filesAuthors.size(); i++) {
-			
-			//Iterate trought single files
-			for (Entry<String, Authors> entry : filesAuthors.get(i).entrySet()) { 
-				//System.out.println(entry.getValue());
-				//System.out.println(entry.getKey() + " " + entry.getValue().getTotal());
-				//entry.getValue().printAuth();
-				//System.out.println(entry.getValue().getTotal());
-				//System.out.println("---");
-			}
-			
-		}
 		
-		for (int i = 0;  i < filesChg.size(); i++) {
-			
-			//Iterate trought single files
-			for (Entry<String, ChgSet> entry : filesChg.get(i).entrySet()) { 
-				//System.out.println(entry.getValue());
-				//System.out.println(entry.getKey() + " " + entry.getValue().getTotal());
-				System.out.println(entry.getKey() + " " + entry.getValue().getTotalChg() + " " + entry.getValue().getMaxChg() + " "+ entry.getValue().getAverageChg() + " " + entry.getValue().getMaxChg());
-			}
-			
-		}
-		
-		
-
-		saveToCSV(projName+"metrics.csv");
+		//Save to file
+		saveToCSV(Filenames.metricsFile);
 	}
 
 }

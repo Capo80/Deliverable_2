@@ -48,6 +48,11 @@
         <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
         <antcall target="build"/>
     </target>
+    <target name="GetFilesMetrics">
+        <java classname="it.deliv2.GetFilesMetrics" failonerror="true" fork="yes">
+            <classpath refid="Deliverable 2.classpath"/>
+        </java>
+    </target>
     <target name="GetClassBuggyness">
         <java classname="it.deliv2.GetClassBuggyness" failonerror="true" fork="yes">
             <classpath refid="Deliverable 2.classpath"/>

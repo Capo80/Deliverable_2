@@ -2,28 +2,29 @@ package it.deliv2;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Scanner;
-import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import it.deliv2.helpers.Filenames;
+import it.deliv2.helpers.Git;
+import it.deliv2.helpers.Issue;
+import it.deliv2.helpers.JsonManager;
+
 public class GetClassBuggyness {
 
 
-	private static String projName = "BOOKKEEPER";
-	private static String versionFileName = projName + "VersionInfo.csv";
+	private static String projName = Filenames.projName;
+	private static String versionFileName = Filenames.versFile;
 	private static String repoURL = "https://github.com/Capo80/"+projName.toLowerCase()+".git";
 	private static HashMap<String, Integer> versionIDMap;
 	private static HashMap<String, Issue> issuesMap;
@@ -227,7 +228,16 @@ public class GetClassBuggyness {
     		return fixVers;
     	
     	for(int h = 0; h < versions.length(); h++) {
-    		int currVers = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		
+    		Object temp = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		Integer currVers = 1;
+    		if (temp != null)
+    			currVers = (Integer) temp;
+    		else {
+    			System.out.println("Missing version!" + versions.getJSONObject(h).get("id").toString());
+    			return -1;
+    		}
+    		
     		if (currVers > fixVers)
     			fixVers = currVers;
     	}
@@ -239,7 +249,16 @@ public class GetClassBuggyness {
 	private static int getMinVersion(JSONArray versions) throws JSONException {
     	int introVers = Issue.INTRO_DEF;
     	for(int h = 0; h < versions.length(); h++) {
-    		int currVers = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		//System.out.println(h);
+    		//System.out.println(versions.getJSONObject(h).get("id").toString());
+    		Object temp = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		Integer currVers = 0;
+    		if (temp != null)
+    			currVers = (Integer) temp;
+    		else{
+    			System.out.println("Missing version!" + versions.getJSONObject(h).get("id").toString());
+    			return -1;
+    		}
     		if (currVers < introVers)
     			introVers = currVers;
     	}
@@ -250,6 +269,7 @@ public class GetClassBuggyness {
 		
 		for (int i = 0; i < total && i < 1000; i++) {
 			
+			System.out.println(i);
         	String key = issues.optJSONObject(i).get("key").toString();
         	
         	JSONObject fields = issues.getJSONObject(i).getJSONObject("fields");
@@ -259,10 +279,15 @@ public class GetClassBuggyness {
         	
         	//Find earliest affected version
         	int introVers = getMinVersion(versions);
+        
+        	if (introVers == -1){
+        		System.out.println(fields.getString("created").split("T")[0]);
+        		continue;
+        	}
         	
         	//Recover opning date of the issue
         	String date = fields.getString("created").split("T")[0];
-        	
+        
         	
         	//Find opening version
         	int openVers = getIDfromDate(date);
@@ -275,6 +300,9 @@ public class GetClassBuggyness {
         	//Find latest fixed version
         	int fixVers = getMaxVersion(fixVersions, key);
         	
+        	if (introVers == -1)
+        		continue;
+        	
         	if (introVers != Issue.INTRO_DEF && openVers < introVers)
         		introVers = Issue.INTRO_DEF;
         	
@@ -284,7 +312,7 @@ public class GetClassBuggyness {
         	//Calculate sums for average
         	calculateSums(introVers, openVers, fixVers);
         	
-        	//System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
+        	System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
         }
 		
 	}
@@ -311,13 +339,14 @@ public class GetClassBuggyness {
 			j = i + 1000;
 			//Send query to jira for issues (1000 at the time)
 			String url = "https://issues.apache.org/jira/rest/api/2/search?jql=project%20=%22"+projName+"%22AND%22issueType%22=%22Bug%22AND%20(%22status%22%20=%20CLOSED%20OR%20%22status%22=RESOLVED)%20AND%22Resolution%22%20=Fixed&fields=versions,fixVersions,created&startAt="+ i.toString() + "&maxResults=" + j.toString();
+			System.out.println(url);
 			JSONObject json = JsonManager.readJsonFromUrl(url);
 			
 			total = json.getInt("total");
 			JSONArray issues = json.getJSONArray("issues");	
 			
 			//Iterate trought the issues
-	        recoverInfoVersions(issues, total);
+	        recoverInfoVersions(issues, total-i);
 	        i = i + 1000;
 	        
 		} while (i < total);
@@ -343,7 +372,7 @@ public class GetClassBuggyness {
 		setBuggyness();
 		
 		//Save everything to a .csv
-		saveToCSV(projName+"BuggynessInfo.csv");
+		saveToCSV(Filenames.bugFile);
 		
 		/*
 		 * for (Entry<String, Issue> entry : issuesMap.entrySet()) { String key =
