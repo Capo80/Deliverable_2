@@ -23,12 +23,7 @@ public class Authors {
 		authorsList.add(newAuthor);
 		total++;
 	}
-	
-	public void printAuth() {
-		for (int i = 0; i < authorsList.size(); i++)
-			System.out.println(authorsList.get(i));
-		
-	}
+
 	public boolean isInList(String author) {
 		return authorsList.contains(author);
 	}

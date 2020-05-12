@@ -29,12 +29,11 @@ public class GetFilesMetrics {
 	
 	private static File createFile(String filename) throws IOException {
 		File newCSV = new File(filename);
-		if (!newCSV.exists())
-			if (!newCSV.createNewFile()) {
+		if (!newCSV.exists() && !newCSV.createNewFile()) {
 				//Log error
 				Logger logger = Logger.getLogger("metrics");
 				logger.log(Level.SEVERE, "Cannot save progress");
-			}
+		}
 		return newCSV;
 	}
 	

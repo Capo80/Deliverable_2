@@ -39,10 +39,8 @@ public class GetClassBuggyness {
 	//Function that creates a file if it does not exists
 	private static File createFile(String filename) throws IOException {
 		File newFile = new File(filename);
-		if (!newFile.exists())
-			if (!newFile.createNewFile()) {
+		if (!newFile.exists() && !newFile.createNewFile()) {
 				//Log error
-				Logger logger = Logger.getLogger("metrics");
 				logger.log(Level.SEVERE, "Cannot create file for BuggynessInfo");
 			}
 		return newFile;
@@ -385,7 +383,6 @@ public class GetClassBuggyness {
 		
 		//Calculate P averages for each version
 		for (int h = 0; h < versionIDs.size(); h++) {
-			//System.out.println(averages[h] + " " + totals[h]);
 			if (totals[h] != 0)	
 				averages[h] = averages[h]/totals[h];
 			else
