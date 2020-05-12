@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Collections;
-import java.util.Comparator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -22,21 +21,21 @@ public class GetReleaseInfo {
 	   private static HashMap<LocalDateTime, String> releaseNames;
 	   private static HashMap<LocalDateTime, String> releaseID;
 	   private static ArrayList<LocalDateTime> releases;
-	   private static String projName =Filenames.projName;
-	   private static String outname = Filenames.versFile;
+	   private static String projName =Filenames.PROJ_NAME;
+	   private static String outname = Filenames.VERS_FILE;
 	   
 
 	   public static void main(String[] args) throws IOException, JSONException {
 		   
 		   //Fills the arraylist with releases dates and orders them
 		   //Ignores releases with missing dates
-		   releases = new ArrayList<LocalDateTime>();
+		   releases = new ArrayList<>();
 		   Integer i;
 		   String url = "https://issues.apache.org/jira/rest/api/2/project/" + projName;
 		   JSONObject json = JsonManager.readJsonFromUrl(url);
 		   JSONArray versions = json.getJSONArray("versions");
-		   releaseNames = new HashMap<LocalDateTime, String>();
-		   releaseID = new HashMap<LocalDateTime, String> ();
+		   releaseNames = new HashMap<>();
+		   releaseID = new HashMap<> ();
 		   for (i = 0; i < versions.length(); i++ ) {
 			   String name = "";
 			   String id = "";
@@ -49,12 +48,7 @@ public class GetReleaseInfo {
 			   }
 		   }
 		   // order releases by date
-		   Collections.sort(releases, new Comparator<LocalDateTime>(){
-			   		//@Override
-		            public int compare(LocalDateTime o1, LocalDateTime o2) {
-		                return o1.compareTo(o2);
-		            }
-		         });
+		   Collections.sort(releases, (o1,o2) -> o1.compareTo(o2));
 		   if (releases.size() < 6)
 			   return;
 		   
@@ -74,13 +68,9 @@ public class GetReleaseInfo {
 		               String fullDate = releases.get(i).toString();
 		               fileWriter.append(fullDate.split("T")[0]);
 		               fileWriter.append("\n");
-		            }
-
-		         } catch (Exception e) {
-		            System.out.println("Error in csv writer");
-		            e.printStackTrace();
 		         }
-		   return;
+
+		   }
 	}
  
 	
@@ -91,7 +81,6 @@ public class GetReleaseInfo {
 			releases.add(dateTime);
 		releaseNames.put(dateTime, name);
 		releaseID.put(dateTime, id);
-		return;
 	}
 
 

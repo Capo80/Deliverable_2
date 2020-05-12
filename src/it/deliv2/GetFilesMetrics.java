@@ -21,23 +21,28 @@ import it.deliv2.metrics.Loc;
 public class GetFilesMetrics {
 
 	private static Git gitManager;
-	private static String projName = Filenames.projName;
-	private static String versionFileName = Filenames.versFile;
-	private static String repoURL = "https://github.com/Capo80/"+projName.toLowerCase()+".git";
 	private static List<HashMap<String, Loc>> filesLocInfo;
 	private static List<HashMap<String, Integer>> filesRevisions;
 	private static List<HashMap<String, Authors>> filesAuthors;
 	private static List<HashMap<String, ChgSet>> filesChg;
 	private static List<String> versionDates;
-	private static List<Integer> versionIDs;
+	
+	private static File createFile(String filename) throws IOException {
+		File newCSV = new File(filename);
+		if (!newCSV.exists())
+			if (!newCSV.createNewFile()) {
+				//Log error
+				Logger logger = Logger.getLogger("metrics");
+				logger.log(Level.SEVERE, "Cannot save progress");
+			}
+		return newCSV;
+	}
 	
 	//Save the file information to a csv
 	private static void saveToCSV(String fileName) throws IOException {
 		
 		//Create file if it does not exist
-		File newCSV = new File(fileName);
-		if (!newCSV.exists())
-			newCSV.createNewFile();
+		File newCSV = createFile(fileName);
 		
 		
 		try (FileWriter fw = new FileWriter(newCSV)) {
@@ -92,7 +97,6 @@ public class GetFilesMetrics {
 		try (Scanner fr = new Scanner(versionCSV)) {
 			
 			versionDates = new ArrayList<>();
-			versionIDs = new ArrayList<>();
 			
 			//Throw away first line
 			fr.nextLine();
@@ -100,7 +104,6 @@ public class GetFilesMetrics {
 			while (fr.hasNextLine()) {
 	          String line = fr.nextLine();
 	          String[] splitted = line.split(",");
-	          versionIDs.add(Integer.parseInt(splitted[0]));
 	          versionDates.add(splitted[3]);
 	        }
 		}
@@ -245,11 +248,11 @@ public class GetFilesMetrics {
 		
 		//Log progress
 		Logger logger = Logger.getLogger("metrics");
-		logger.log(Level.INFO, "Analized version " + version);
+		logger.log(Level.INFO, "Analized version {0}", version);
 		
 		//Get all commits in the version
 		List<String> info = gitManager.getFilesModifiedBeforeDate(versionDates.get(version));
-		List<String> curr_files = new ArrayList<>();
+		List<String> currFiles = new ArrayList<>();
 		
 		//Analize commits one by one
 		for (int j = 0; j < info.size(); j++) {
@@ -260,10 +263,10 @@ public class GetFilesMetrics {
 			if (info.get(j).startsWith("'")) {
 				
 				//If it is an autor, it means one commit is over, we update Authors and chgset
-				updateAuthors(curr_files, info.get(j), version);
-				updateChg(curr_files, version);
+				updateAuthors(currFiles, info.get(j), version);
+				updateChg(currFiles, version);
 				
-				curr_files = new ArrayList<>();
+				currFiles = new ArrayList<>();
 				
 			} else {
 				
@@ -285,7 +288,7 @@ public class GetFilesMetrics {
 							filesRevisions.get(version).put(values[2], filesRevisions.get(version).get(values[2])+1);
 						
 						//Add to file list
-						curr_files.add(values[2]);
+						currFiles.add(values[2]);
 						
 						//Update LOC
 						updateLoc(added, removed, values[2], version);
@@ -320,14 +323,14 @@ public class GetFilesMetrics {
 	
 	public static void main(String[] args) throws IOException {
 
-		gitManager = new Git(repoURL, "..");
-		initVersionDates(versionFileName);
+		gitManager = new Git(Filenames.REPO_NAME, "..");
+		initVersionDates(Filenames.VERS_FILE);
 		
 		//Read all commits
 		getAllModifications();
 		
 		//Save to file
-		saveToCSV(Filenames.metricsFile);
+		saveToCSV(Filenames.METRICS_FILE);
 	}
 
 }

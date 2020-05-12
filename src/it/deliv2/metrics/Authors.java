@@ -6,11 +6,11 @@ import java.util.List;
 public class Authors {
 	
 	private int total;
-	private List<String> authors;
+	private List<String> authorsList;
 	
 	public Authors() {
 		total = 0;
-		authors = new ArrayList<String>();
+		authorsList = new ArrayList<>();
 	}
 	
 	public void increaseTotal() {
@@ -20,17 +20,17 @@ public class Authors {
 		return total;
 	}
 	public  void addAuthor(String newAuthor) {
-		authors.add(newAuthor);
+		authorsList.add(newAuthor);
 		total++;
 	}
 	
 	public void printAuth() {
-		for (int i = 0; i < authors.size(); i++)
-			System.out.println(authors.get(i));
+		for (int i = 0; i < authorsList.size(); i++)
+			System.out.println(authorsList.get(i));
 		
 	}
 	public boolean isInList(String author) {
-		return authors.contains(author);
+		return authorsList.contains(author);
 	}
 	
 

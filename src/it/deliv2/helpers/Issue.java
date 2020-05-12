@@ -7,8 +7,8 @@ public class Issue {
 	private int openVersion;
 	private int fixVersion;
 	
-	public final static int FIX_DEF = -1;
-	public final static int INTRO_DEF = 100000000;
+	public static final int FIX_DEF = -1;
+	public static final int INTRO_DEF = 100000000;
 	
 	
 	public Issue(String key, int introVersion,int openVersion, int fixVersion) {

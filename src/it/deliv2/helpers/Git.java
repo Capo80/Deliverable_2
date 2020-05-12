@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,7 +35,7 @@ public class Git {
 	   try {
 			runCommand("git",  "clone", repoURL);
 	   } catch (IOException e1) {
-			e1.printStackTrace();
+			//do nothing
 	   } 
 	   
 	   this.repository = Paths.get(directory + "/" + repoName);

@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.Scanner;
 
 import org.json.JSONArray;
@@ -22,10 +24,7 @@ import it.deliv2.helpers.JsonManager;
 
 public class GetClassBuggyness {
 
-
-	private static String projName = Filenames.projName;
-	private static String versionFileName = Filenames.versFile;
-	private static String repoURL = "https://github.com/Capo80/"+projName.toLowerCase()+".git";
+	//useful structures
 	private static HashMap<String, Integer> versionIDMap;
 	private static HashMap<String, Issue> issuesMap;
 	private static List<String> versionDates;
@@ -34,14 +33,27 @@ public class GetClassBuggyness {
 	private static int[] totals;
 	private static Git gitManager;
 	private static List<HashMap<String, Boolean>> files;
+	private static Logger logger = Logger.getLogger("buggyness");
+	
+	
+	//Function that creates a file if it does not exists
+	private static File createFile(String filename) throws IOException {
+		File newFile = new File(filename);
+		if (!newFile.exists())
+			if (!newFile.createNewFile()) {
+				//Log error
+				Logger logger = Logger.getLogger("metrics");
+				logger.log(Level.SEVERE, "Cannot create file for BuggynessInfo");
+			}
+		return newFile;
+	}
 	
 	//Save the file information to a csv
 	private static void saveToCSV(String fileName) throws IOException {
-		
-		File newCSV = new File(fileName);
-		if (!newCSV.exists())
-			newCSV.createNewFile();
-		
+			
+		//Create file if it does not exist
+		File newCSV = createFile(fileName);
+	
 		try (FileWriter fw = new FileWriter(newCSV)) {
 			
 			fw.write("Version, File, Buggy\n");
@@ -51,8 +63,8 @@ public class GetClassBuggyness {
 				
 				//Iterate trought single files
 				for (Entry<String, Boolean> entry : files.get(i).entrySet()) { 
-					//System.out.println(entry.getValue());
-					if (entry.getValue())
+					
+					if (Boolean.TRUE.equals(entry.getValue()))
 						fw.write(i+1 + ", " + entry.getKey() + ", Yes\n" );
 					else
 						fw.write(i+1 + ", " + entry.getKey() + ", No\n" );
@@ -69,24 +81,21 @@ public class GetClassBuggyness {
 	private static void getAllFiles() throws IOException {
 		
 		//Initialize list object
-		files = new ArrayList<HashMap<String, Boolean>>();
+		files = new ArrayList<>();
 		
 		for (int i = 0; i < versionDates.size(); i++) {
 			
 			//Initialize HashMap
-			files.add(new HashMap<String, Boolean>());
+			files.add(new HashMap<>());
 			
 			//Get list of files
-			List<String> curr_files = gitManager.getFilesModifiedBeforeDate(versionDates.get(i));
-			
-			
-			//System.out.println(curr_files.size());
-			
+			List<String> currFiles = gitManager.getFilesModifiedBeforeDate(versionDates.get(i));
+
 			//Add files to hashmap
-			for (int j = 0; j < curr_files.size(); j++) {
+			for (int j = 0; j < currFiles.size(); j++) {
 				
-				String curr = curr_files.get(j);
-				System.out.println(curr);
+				String curr = currFiles.get(j);
+				
 				String[] values = curr.split("\t");
 				//Some file dont have the info necessary to calculate the metrics - i remove them
 				if (!curr.startsWith("'") && values.length == 3 && values[0].compareTo("-") != 0 && values[1].compareTo("-") != 0 && !curr.contains("=>"))
@@ -109,7 +118,6 @@ public class GetClassBuggyness {
 			//Recover all files modified while working on this issue
 			List<String> modFiles = gitManager.getFilesByKey(key);
 			
-			//System.out.println(modFiles.size());
 			//For every affected version set each file to buggy
 			for (int i = issue.getIntroVersion()-1; i < issue.getFixVersion()-1; i++) {
 				for (int j = 0; j < modFiles.size(); j++) {
@@ -125,15 +133,22 @@ public class GetClassBuggyness {
 	//Function that calculates all the missing IV with proportion
 	private static void calculateMissingIVs() {
 		
+		//Iterate torught issues
 		for (Entry<String, Issue> entry : issuesMap.entrySet()) {
 		    String key = entry.getKey();
 		    Issue value = entry.getValue();
+		    //Find issues with no IV
 		    if (value.getIntroVersion() == Issue.INTRO_DEF && value.getFixVersion() != Issue.FIX_DEF) {
+		    	//Calculate with proportion
 		    	int newIntroVers = Math.round(value.getFixVersion() - (value.getFixVersion() - value.getOpenVersion())*averages[value.getFixVersion()-1]);
+		    	
+		    	//Special cases
 		    	if (newIntroVers <= 0)
 		    		newIntroVers = 1;
 		    	if (newIntroVers > value.getOpenVersion())
 		    		newIntroVers = value.getOpenVersion();
+		    	
+		    	//Update map
 		    	value.setIntroVersion(newIntroVers);
 		    	issuesMap.put(key, value);
 		    }
@@ -141,11 +156,16 @@ public class GetClassBuggyness {
 	
 	}
 	
+	//Updates sums for average
 	private static void calculateSums(int introVers, int openVers, int fixVers) {
-		
+
+		//Check if the numbers are valid
     	if (introVers != Issue.INTRO_DEF && fixVers != Issue.FIX_DEF) {
+    		
+    		//Update each version
     		for(int h = fixVers+1; h < versionIDs.size(); h++) {
     			totals[h]++;
+    			//Some special cases
     			if (fixVers != openVers) {
     				averages[h] += (fixVers - introVers)*1.0/(fixVers - openVers)*1.0;
     			} else {
@@ -159,10 +179,13 @@ public class GetClassBuggyness {
     	}
 		
 	}
+	//Function to recover version IDs from the file
 	private static HashMap<String, Integer> recoverVersionIDs(String fileName) throws FileNotFoundException {
 		
-		HashMap<String, Integer> versionIDs = new HashMap<String, Integer>();
+		//Initialize structure
+		HashMap<String, Integer> versionIDs = new HashMap<>();
 		
+		//Read file
 		File versionCSV = new File(fileName);
 		
 		try (Scanner fr = new Scanner(versionCSV)) {
@@ -181,6 +204,7 @@ public class GetClassBuggyness {
 		
 	}
 	
+	//Function to update structure with version dates from the file
 	private static void initVersionDates(String fileName) throws FileNotFoundException {
 		
 		File versionCSV = new File(fileName);
@@ -189,6 +213,7 @@ public class GetClassBuggyness {
 			
 			versionDates = new ArrayList<>();
 			versionIDs = new ArrayList<>();
+			
 			//Throw away first line
 			fr.nextLine();
 			
@@ -203,6 +228,8 @@ public class GetClassBuggyness {
 		
 		
 	}
+	
+	//Recovers the version id that follows a date
 	private static int getIDfromDate(String date) {
     	int m = 0;
     	while (m < versionDates.size() && date.compareTo(versionDates.get(m)) > 0) {
@@ -220,6 +247,7 @@ public class GetClassBuggyness {
 		
     	int fixVers = Issue.FIX_DEF;
     	
+    	//Check commits
     	String lastCommitDate = gitManager.getLastCommitDate(key);
     	if (lastCommitDate.compareTo("") != 0)
     		fixVers =  getIDfromDate(lastCommitDate);
@@ -227,14 +255,16 @@ public class GetClassBuggyness {
     	if (fixVers != Issue.FIX_DEF)
     		return fixVers;
     	
+    	//Check JIRA
     	for(int h = 0; h < versions.length(); h++) {
-    		
-    		Object temp = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		String toFind = versions.getJSONObject(h).get("id").toString();
+    		Object temp = versionIDMap.get(toFind);
     		Integer currVers = 1;
     		if (temp != null)
     			currVers = (Integer) temp;
     		else {
-    			System.out.println("Missing version!" + versions.getJSONObject(h).get("id").toString());
+    			//Log warinig if no version fuond
+				logger.log(Level.WARNING, "Missing date for ID: {0}", toFind);
     			return -1;
     		}
     		
@@ -246,31 +276,35 @@ public class GetClassBuggyness {
 		
 	}
 	
+	//Recovers the IV from JIRA
 	private static int getMinVersion(JSONArray versions) throws JSONException {
     	int introVers = Issue.INTRO_DEF;
+    	
+    	//Check all the versions, take the lowest
     	for(int h = 0; h < versions.length(); h++) {
-    		//System.out.println(h);
-    		//System.out.println(versions.getJSONObject(h).get("id").toString());
-    		Object temp = versionIDMap.get(versions.getJSONObject(h).get("id").toString());
+    		String toFind = versions.getJSONObject(h).get("id").toString();
+    		Object temp = versionIDMap.get(toFind);
     		Integer currVers = 0;
     		if (temp != null)
     			currVers = (Integer) temp;
     		else{
-    			System.out.println("Missing version!" + versions.getJSONObject(h).get("id").toString());
+    			//Log warinig if no version fuond
+				logger.log(Level.WARNING, "Missing date for ID: {0}", toFind);
     			return -1;
     		}
+    		//correct errors
     		if (currVers < introVers)
     			introVers = currVers;
     	}
 		return introVers;
 	}
 	
+	//Functions that extract all the version info from the json array
 	private static void recoverInfoVersions(JSONArray issues, int total) throws JSONException, IOException {
 		
 		for (int i = 0; i < total && i < 1000; i++) {
 			
-			System.out.println(i);
-        	String key = issues.optJSONObject(i).get("key").toString();
+			String key = issues.optJSONObject(i).get("key").toString();
         	
         	JSONObject fields = issues.getJSONObject(i).getJSONObject("fields");
         
@@ -280,11 +314,16 @@ public class GetClassBuggyness {
         	//Find earliest affected version
         	int introVers = getMinVersion(versions);
         
-        	if (introVers == -1){
-        		System.out.println(fields.getString("created").split("T")[0]);
-        		continue;
-        	}
+        	//Recover fixed version
+        	JSONArray fixVersions = fields.getJSONArray("fixVersions");
         	
+        	//Find latest fixed version
+        	int fixVers = getMaxVersion(fixVersions, key);
+        	
+        	//Missing version
+        	if (fixVers == -1 || introVers == -1)
+        		continue;
+           	
         	//Recover opning date of the issue
         	String date = fields.getString("created").split("T")[0];
         
@@ -292,16 +331,6 @@ public class GetClassBuggyness {
         	//Find opening version
         	int openVers = getIDfromDate(date);
         	
-        	//System.out.println(versionDates.get(m-1) + " " +  date + " " + versionDates.get(m));
-        	
-        	//Recover fixed version
-        	JSONArray fixVersions = fields.getJSONArray("fixVersions");
-        	
-        	//Find latest fixed version
-        	int fixVers = getMaxVersion(fixVersions, key);
-        	
-        	if (introVers == -1)
-        		continue;
         	
         	if (introVers != Issue.INTRO_DEF && openVers < introVers)
         		introVers = Issue.INTRO_DEF;
@@ -312,19 +341,20 @@ public class GetClassBuggyness {
         	//Calculate sums for average
         	calculateSums(introVers, openVers, fixVers);
         	
-        	System.out.println(key + " " + introVers + " " + openVers + " " + fixVers);
         }
 		
 	}
 	public static void main(String[] args) throws IOException, JSONException {
 		
 		//import repository if its not there
-		gitManager = new Git(repoURL, "..");
+		gitManager = new Git(Filenames.REPO_NAME, "..");
 		
 		//Read info from version file
-		versionIDMap = recoverVersionIDs(versionFileName);
-		initVersionDates(versionFileName);
+		versionIDMap = recoverVersionIDs(Filenames.VERS_FILE);
+		initVersionDates(Filenames.VERS_FILE);
 
+		logger.log(Level.INFO, "Recovered version info");
+		
 		Integer j = 0;
 		Integer i = 0; 
 		Integer total = 1;
@@ -334,12 +364,12 @@ public class GetClassBuggyness {
 		Arrays.fill(totals, 0);
 		
 		//Initialize issue map
-		issuesMap = new HashMap<String, Issue>();
+		issuesMap = new HashMap<>();
 		do {
 			j = i + 1000;
 			//Send query to jira for issues (1000 at the time)
-			String url = "https://issues.apache.org/jira/rest/api/2/search?jql=project%20=%22"+projName+"%22AND%22issueType%22=%22Bug%22AND%20(%22status%22%20=%20CLOSED%20OR%20%22status%22=RESOLVED)%20AND%22Resolution%22%20=Fixed&fields=versions,fixVersions,created&startAt="+ i.toString() + "&maxResults=" + j.toString();
-			System.out.println(url);
+			String url = "https://issues.apache.org/jira/rest/api/2/search?jql=project%20=%22"+Filenames.PROJ_NAME+"%22AND%22issueType%22=%22Bug%22AND%20(%22status%22%20=%20CLOSED%20OR%20%22status%22=RESOLVED)%20AND%22Resolution%22%20=Fixed&fields=versions,fixVersions,created&startAt="+ i.toString() + "&maxResults=" + j.toString();
+		
 			JSONObject json = JsonManager.readJsonFromUrl(url);
 			
 			total = json.getInt("total");
@@ -351,6 +381,8 @@ public class GetClassBuggyness {
 	        
 		} while (i < total);
 		
+		logger.log(Level.INFO, "Recovered all existing info for reported bugs");
+		
 		//Calculate P averages for each version
 		for (int h = 0; h < versionIDs.size(); h++) {
 			//System.out.println(averages[h] + " " + totals[h]);
@@ -358,12 +390,13 @@ public class GetClassBuggyness {
 				averages[h] = averages[h]/totals[h];
 			else
 				averages[h] = 0;
-			System.out.println(averages[h] + " " + totals[h]);
 		}
 		
 
 		//Calculate missing IV with proportion
 		calculateMissingIVs();
+		
+		logger.log(Level.INFO, "Calcualted missing info with proportion");
 		
 		//Recover filenames per version
 		getAllFiles();
@@ -371,16 +404,12 @@ public class GetClassBuggyness {
 		//Find if a file is bugged
 		setBuggyness();
 		
-		//Save everything to a .csv
-		saveToCSV(Filenames.bugFile);
+		logger.log(Level.INFO, "Found all bugged files");
 		
-		/*
-		 * for (Entry<String, Issue> entry : issuesMap.entrySet()) { String key =
-		 * entry.getKey(); Issue value = entry.getValue(); System.out.println(key + " "
-		 * + value.getIntroVersion() + " " + value.getOpenVersion() + " " +
-		 * value.getFixVersion()); }
-		 */
-		 
+		//Save everything to a .csv
+		saveToCSV(Filenames.BUG_FILE);
+		
+		logger.log(Level.INFO, "Saved results in .csv file");
 		 
 	}
 
