@@ -11,6 +11,8 @@
     <path id="Deliverable 2.classpath">
         <pathelement location="bin"/>
         <pathelement location="../../Downloads/java-json.jar"/>
+        <pathelement location="../../Downloads/weka-3-8-4-azul-zulu-linux/weka-3-8-4/weka.jar"/>
+        <pathelement location="../../Downloads/SMOTE.jar"/>
     </path>
     <target name="init">
         <mkdir dir="bin"/>
@@ -47,6 +49,11 @@
     <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
         <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
         <antcall target="build"/>
+    </target>
+    <target name="GetClassifierInfo">
+        <java classname="it.deliv2.GetClassifierInfo" failonerror="true" fork="yes">
+            <classpath refid="Deliverable 2.classpath"/>
+        </java>
     </target>
     <target name="GetFilesMetrics">
         <java classname="it.deliv2.GetFilesMetrics" failonerror="true" fork="yes">
