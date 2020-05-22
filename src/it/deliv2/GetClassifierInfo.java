@@ -198,14 +198,14 @@ public class GetClassifierInfo {
 		eval.evaluateModel(classifier, testing);
 		
 		//Recover metrics+
-		double AUC = eval.areaUnderPRC(1);
+		double AUC = eval.areaUnderROC(0);
 		double kappa = eval.kappa();
-		double precision = eval.precision(1);
-		double recall = eval.recall(1);
-		double trueP = eval.numTruePositives(1);
-		double falseP = eval.numFalsePositives(1);
-		double trueN = eval.numTrueNegatives(1);
-		double falseN = eval.numFalseNegatives(1);
+		double precision = eval.precision(0);
+		double recall = eval.recall(0);
+		double trueP = eval.numTruePositives(0);
+		double falseP = eval.numFalsePositives(0);
+		double trueN = eval.numTrueNegatives(0);
+		double falseN = eval.numFalseNegatives(0);
 		double trainingPer = training.numInstances()*1.0 / (training.numInstances()+testing.numInstances()) *100;
 		double trainingPositives = positives.get(trainingRelease-2)*1.0 / training.numInstances() * 100;
 		double testingPositives = (positives.get(trainingRelease-1) - positives.get(trainingRelease-2))*1.0 / testing.numInstances() *100;
