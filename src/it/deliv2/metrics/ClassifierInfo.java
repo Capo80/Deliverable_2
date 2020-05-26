@@ -14,24 +14,13 @@ public class ClassifierInfo {
 	double falseN;
 	double precision;
 	double recall;
-	double AUC;
+	double Auc;
 	double kappa;
 	
-	public ClassifierInfo(int trainingRelease, String name, String samplingName, double trainingPer, double trainingPositives, double testingPositives, double trueP, double falseP, double trueN, double falseN, double precision, double recall, double AUC, double kappa) {
+	public ClassifierInfo(int trainingRelease, String name, String samplingName) {
 		this.trainingRelease = trainingRelease;
 		this.name = name;
 		this.samplingName = samplingName;
-		this.trainingPer = trainingPer;
-		this.trainingPositives = trainingPositives;
-		this.testingPositives = testingPositives;
-		this.trueP = trueP;
-		this.falseP = falseP;
-		this.trueN = trueN;
-		this.falseN = falseN;
-		this.precision = precision;
-		this.recall = recall;
-		this.AUC = AUC;
-		this.kappa = kappa;
 	}
 	
 	
@@ -138,11 +127,11 @@ public class ClassifierInfo {
 	public void setRecall(double recall) {
 		this.recall = recall;
 	}
-	public double getAUC() {
-		return AUC;
+	public double getAuc() {
+		return Auc;
 	}
-	public void setAUC(double aUC) {
-		AUC = aUC;
+	public void setAuc(double Auc) {
+		this.Auc = Auc;
 	}
 	public double getKappa() {
 		return kappa;

@@ -11,6 +11,7 @@ import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import it.deliv2.helpers.EvalException;
 import it.deliv2.helpers.Filenames;
 import it.deliv2.metrics.ClassifierInfo;
 import weka.attributeSelection.CfsSubsetEval;
@@ -37,9 +38,15 @@ public class GetClassifierInfo {
 	private static List<ClassifierInfo> sampledFeatureInfo;
 	private static Logger logger = Logger.getLogger("classifiers");
 	private static List<Integer> positives;
-	private static List<Integer> versionIndex;
+	public static final String NONE = ", None, ";
+	public static final String UNDER = "UnderSampling";
+	public static final String OVER = "OverSampling";
+	public static final String SMOTE = "SMOTE";
+	public static final String BEST = ", BestFirst, ";
+	public static final String NAIVE = "NaiveBayes";
+	public static final String FOREST = "RandomForest";
+	public static final String IBK = "IBk";
 	
-
 	//Function that creates a file if it does not exists
 	private static File createFile(String filename) throws IOException {
 		File newFile = new File(filename);
@@ -84,18 +91,15 @@ public class GetClassifierInfo {
 	
 		try (FileWriter fw = new FileWriter(newCSV)) {
 			
-			fw.write("Dataset, Balancing, Feature Selection, Training Release, Classifier, Training% of total, Positive% in training, Positive% in testing, TP, FP, TN, FN, Precision, Recall, AUC, kappa\n");
+			fw.write("Dataset, Balancing, Feature Selection, Training Release, Classifier, Training% of total, Positive% in training, Positive% in testing, TP, FP, TN, FN, Precision, Recall, Auc, kappa\n");
 			
 			//Iterate trought simpleinfo
 			for (int i = 0;  i < simpleInfo.size(); i++) {
 				
 				ClassifierInfo curr = simpleInfo.get(i);
-				System.out.println(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", None, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
+				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + NONE + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
 						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa());
-				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", None, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
-						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa() + "\n");
+						+ curr.getAuc() + ", " + curr.getKappa() + "\n");
 				 
 				
 			}
@@ -104,27 +108,21 @@ public class GetClassifierInfo {
 			for (int i = 0;  i < featureAnalyze.size(); i++) {
 				
 				ClassifierInfo curr = featureAnalyze.get(i);
-				System.out.println(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", BestFirst, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
+				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + BEST + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
 						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa());
-				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", BestFirst, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
-						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa() + "\n");
+						+ curr.getAuc() + ", " + curr.getKappa() + "\n");
 				 
 				
 			}
 			
 			
 			//Iterate trought samplinginfo
-			for (int i = 0;  i < sampledFeatureInfo.size(); i++) {
+			for (int i = 0;  i < sampledInfo.size(); i++) {
 				
-				ClassifierInfo curr = sampledFeatureInfo.get(i);
-				System.out.println(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", None, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
+				ClassifierInfo curr = sampledInfo.get(i);
+				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + NONE + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
 						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa());
-				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", None, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
-						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa() + "\n");
+						+ curr.getAuc() + ", " + curr.getKappa() + "\n");
 				 
 				
 			}
@@ -134,12 +132,9 @@ public class GetClassifierInfo {
 			for (int i = 0;  i < sampledFeatureInfo.size(); i++) {
 				
 				ClassifierInfo curr = sampledFeatureInfo.get(i);
-				System.out.println(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", BestFirst, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
+				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + BEST + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
 						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa());
-				fw.write(Filenames.PROJ_NAME + ", " + curr.getSamplingName()   + ", BestFirst, " + curr.getTrainingRelease() + ", " + curr.getName() + ", " + curr.getTrainingPer() + ", " + curr.getTrainingPositives() + ", " + curr.getTestingPositives() + ", " +
-						curr.getTrueP() + ", " + curr.getFalseP() + ", " + curr.getTrueN() + ", " + curr.getFalseN() + ", " + curr.getPrecision() + ", " + curr.getRecall() + ", "  
-						+ curr.getAUC() + ", " + curr.getKappa() + "\n");
+						+ curr.getAuc() + ", " + curr.getKappa() + "\n");
 				 
 				
 			}
@@ -151,10 +146,10 @@ public class GetClassifierInfo {
 	
 	private static List<Integer> getVersionIdexes(String filename) throws FileNotFoundException {
 		
-		List<Integer> to_return = new ArrayList<>();
+		List<Integer> toReturn = new ArrayList<>();
 		positives = new ArrayList<>();
 		
-		to_return.add(0);
+		toReturn.add(0);
 		
 		File metricFile = new File(filename);
 		
@@ -165,59 +160,65 @@ public class GetClassifierInfo {
 			
 			int counter = 0;
 			int current = 1;
-			int positive_c = 0;
+			int positiveC = 0;
 			while (fr.hasNextLine()) {
 				String line = fr.nextLine();
 				String[] splitted = line.split(",");
 				
 				if ( current != Integer.parseInt(splitted[0])) {
 					current++;
-					positives.add(positive_c);
-					to_return.add(counter);
+					positives.add(positiveC);
+					toReturn.add(counter);
 				}
 				
 				if (splitted[15].compareTo(" Yes") == 0) 
-					positive_c++;
+					positiveC++;
 				
 				counter++;
 			}
 
-			to_return.add(counter);
+			toReturn.add(counter);
 		}
 		
-		return to_return;
+		return toReturn;
 	}
-	private static void testAndEval(Classifier classifier, Instances training, Instances testing, int trainingRelease, String name, String samplingName, List<ClassifierInfo> to_use) throws Exception {
-
+	private static void testAndEval(Classifier classifier, Instances training, Instances testing, int trainingRelease, String name, String samplingName, List<ClassifierInfo> toUse) throws EvalException {
+		
+		Evaluation eval;
 		//build
-		classifier.buildClassifier(training);
+		try {
+			classifier.buildClassifier(training);
 
-		//eval
-		Evaluation eval = new Evaluation(testing);	
+			//eval
+			eval = new Evaluation(testing);	
 
-		eval.evaluateModel(classifier, testing);
+			eval.evaluateModel(classifier, testing);
+		} catch (Exception e) {
+			throw new EvalException("Cannot build or eval sets");
+		}
+
+
+		//Create structure
+		ClassifierInfo toAdd = new ClassifierInfo(trainingRelease, name, samplingName);
 		
-		//Recover metrics+
-		double AUC = eval.areaUnderROC(0);
-		double kappa = eval.kappa();
-		double precision = eval.precision(0);
-		double recall = eval.recall(0);
-		double trueP = eval.numTruePositives(0);
-		double falseP = eval.numFalsePositives(0);
-		double trueN = eval.numTrueNegatives(0);
-		double falseN = eval.numFalseNegatives(0);
-		double trainingPer = training.numInstances()*1.0 / (training.numInstances()+testing.numInstances()) *100;
-		double trainingPositives = positives.get(trainingRelease-2)*1.0 / training.numInstances() * 100;
-		double testingPositives = (positives.get(trainingRelease-1) - positives.get(trainingRelease-2))*1.0 / testing.numInstances() *100;
+		//Recover metrics
+		toAdd.setAuc(eval.areaUnderROC(0));
+		toAdd.setKappa(eval.kappa());
+		toAdd.setPrecision(eval.precision(0));
+		toAdd.setRecall(eval.recall(0));
+		toAdd.setTrueP(eval.numTruePositives(0));
+		toAdd.setFalseP(eval.numFalsePositives(0));
+		toAdd.setTrueN(eval.numTrueNegatives(0));
+		toAdd.setFalseN(eval.numFalseNegatives(0));
+		toAdd.setTrainingPer(training.numInstances()*1.0 / (training.numInstances()+testing.numInstances()) *100);
+		toAdd.setTrainingPositives(positives.get(trainingRelease-2)*1.0 / training.numInstances() * 100);
+		toAdd.setTestingPositives((positives.get(trainingRelease-1) - positives.get(trainingRelease-2))*1.0 / testing.numInstances() *100);
 		
-		//Add to structure
-		ClassifierInfo to_add = new ClassifierInfo(trainingRelease, name, samplingName, trainingPer, trainingPositives, testingPositives, trueP, falseP, trueN, falseN, precision, recall, AUC, kappa);
-		
-		to_use.add(to_add);
+		toUse.add(toAdd);
 	}
 
 	
-	private static void featureSelectionAnalyze(Instances training, Instances testing, int trainingRelease, boolean sampling) throws Exception {
+	private static void featureSelectionAnalyze(Instances training, Instances testing, int trainingRelease, boolean sampling) throws EvalException {
 		
 		//create AttributeSelection object
 		AttributeSelection filter = new AttributeSelection();
@@ -229,13 +230,20 @@ public class GetClassifierInfo {
 		//set the filter to use the evaluator and search algorithm
 		filter.setEvaluator(eval);
 		filter.setSearch(search);
+		Instances filteredTraining;
+		Instances testingFiltered;
 		
-		//specify the dataset
-		filter.setInputFormat(training);
-		//apply
-		Instances filteredTraining = Filter.useFilter(training, filter);
-		
-		Instances testingFiltered = Filter.useFilter(testing, filter);
+		try {
+			//specify the dataset
+			filter.setInputFormat(training);
+			//apply
+			filteredTraining = Filter.useFilter(training, filter);
+			
+			testingFiltered = Filter.useFilter(testing, filter);
+			
+		} catch (Exception e) {
+			throw new EvalException("Cannot apply filter");
+		}
 		
 		if (sampling)
 			sampledAnalyze(filteredTraining, testingFiltered, trainingRelease, sampledFeatureInfo);
@@ -245,7 +253,7 @@ public class GetClassifierInfo {
 		
 	}
 	
-	private static void sampledAnalyze(Instances training, Instances testing, int trainingRelease, List<ClassifierInfo> to_use) throws Exception {
+	private static void sampledAnalyze(Instances training, Instances testing, int trainingRelease, List<ClassifierInfo> toUse) throws EvalException {
 
 
 		//Set prediction attribute
@@ -254,31 +262,43 @@ public class GetClassifierInfo {
 		testing.setClassIndex(numAttr - 1);
 		
     	Resample resample = new Resample();
-		resample.setInputFormat(training);
+		try {
+
+			resample.setInputFormat(training);
+			
+		} catch (Exception e) {
+			throw new EvalException("Cannot bind input");
+		}
 		FilteredClassifier fc = new FilteredClassifier();
 		
 		// Under sampling
 		
 		SpreadSubsample  spreadSubsample = new SpreadSubsample();
 		String[] opts = new String[]{ "-M", "1.0"};
-		spreadSubsample.setOptions(opts);
+		try {
+
+			spreadSubsample.setOptions(opts);
+			
+		} catch (Exception e) {
+			throw new EvalException("Cannot set options for UnderSampling");
+		}
 		fc.setFilter(spreadSubsample);
 		
 		NaiveBayes naiveB = new NaiveBayes();
 		fc.setClassifier(naiveB);
 		
-		testAndEval(fc, training, testing, trainingRelease, "NaiveBayes", "UnderSampling", to_use);
+		testAndEval(fc, training, testing, trainingRelease, NAIVE, UNDER, toUse);
 		
 
 		RandomForest randomF = new RandomForest();
 		fc.setClassifier(randomF);
 		
-		testAndEval(fc, training, testing, trainingRelease, "RandomForest", "UnderSampling", to_use);
+		testAndEval(fc, training, testing, trainingRelease, FOREST, UNDER, toUse);
 		
 
 		IBk ibk = new IBk();
 		fc.setClassifier(ibk);
-		testAndEval(fc, training, testing, trainingRelease, "IBk", "UnderSampling", to_use);
+		testAndEval(fc, training, testing, trainingRelease, IBK, UNDER, toUse);
 		
 		// OverSampling
 		double trainingPositives = positives.get(trainingRelease-2)*1.0 / training.numInstances() * 100;
@@ -289,48 +309,60 @@ public class GetClassifierInfo {
 		
 		DecimalFormat df = new DecimalFormat("#.##");
 		opts = new String[]{ "-B", "1", "-Z", df.format(trainingPositives)};
-		resample.setOptions(opts);
+		try {
+
+			spreadSubsample.setOptions(opts);
+			
+		} catch (Exception e) {
+			throw new EvalException("Cannot set options for OverSampling");
+		}
 		fc.setFilter(resample);
 		
 		naiveB = new NaiveBayes();
 		fc.setClassifier(naiveB);
 		
-		testAndEval(fc, training, testing, trainingRelease, "NaiveBayes", "OverSampling", to_use);
+		testAndEval(fc, training, testing, trainingRelease, NAIVE, OVER, toUse);
 		
 
 		randomF = new RandomForest();
 		fc.setClassifier(randomF);
 		
-		testAndEval(fc, training, testing, trainingRelease, "RandomForest", "OverSampling", to_use);
+		testAndEval(fc, training, testing, trainingRelease, FOREST, OVER, toUse);
 		
 
 		ibk = new IBk();
 		fc.setClassifier(ibk);
-		testAndEval(fc, training, testing, trainingRelease, "IBk", "OverSampling", to_use);
+		testAndEval(fc, training, testing, trainingRelease, IBK, OVER, toUse);
 		
 		//SMOTE
 		SMOTE smote = new SMOTE();
-		smote.setInputFormat(training);
+		try {
+
+			spreadSubsample.setOptions(opts);
+			
+		} catch (Exception e) {
+			throw new EvalException("Cannot set options for SMOTE");
+		}
 		fc.setFilter(smote);
 		
 		naiveB = new NaiveBayes();
 		fc.setClassifier(naiveB);
 		
-		testAndEval(fc, training, testing, trainingRelease, "NaiveBayes", "SMOTE", to_use);
+		testAndEval(fc, training, testing, trainingRelease, NAIVE, SMOTE, toUse);
 		
 
 		randomF = new RandomForest();
 		fc.setClassifier(randomF);
 		
-		testAndEval(fc, training, testing, trainingRelease, "RandomForest", "SMOTE", to_use);
+		testAndEval(fc, training, testing, trainingRelease, FOREST, SMOTE, toUse);
 		
 
 		ibk = new IBk();
 		fc.setClassifier(ibk);
-		testAndEval(fc, training, testing, trainingRelease, "IBk", "SMOTE", to_use);
+		testAndEval(fc, training, testing, trainingRelease, IBK, SMOTE, toUse);
 	}
 	
-	private static void simpleAnalyze(Instances training, Instances testing, int trainingRelease, List<ClassifierInfo> to_use) throws Exception {
+	private static void simpleAnalyze(Instances training, Instances testing, int trainingRelease, List<ClassifierInfo> toUse) throws EvalException {
 		
 		//Set prediction attribute
 		int numAttr = training.numAttributes();
@@ -339,27 +371,27 @@ public class GetClassifierInfo {
 		
 		// Bayes
 		NaiveBayes classifier = new NaiveBayes();
-		testAndEval(classifier, training, testing, trainingRelease, "NaiveBayes", "None", to_use);
+		testAndEval(classifier, training, testing, trainingRelease, NAIVE, "None", toUse);
 		
 		//Random forest
 		RandomForest classifier2 = new RandomForest();
-		testAndEval(classifier2, training, testing, trainingRelease, "RandomForest", "None", to_use);
+		testAndEval(classifier2, training, testing, trainingRelease, FOREST, "None", toUse);
 		
 		// IBK
 		IBk classifier3 = new IBk();
-		testAndEval(classifier3, training, testing, trainingRelease, "IBk", "None", to_use);
+		testAndEval(classifier3, training, testing, trainingRelease, IBK, "None", toUse);
 		
 	}
 	public static void main(String[] args) throws Exception {
 
+
+		
+		
 		//Build final file
 		buildFinalCSV(Filenames.BUG_FILE, Filenames.METRICS_FILE, Filenames.FINAL_FILE);
 		
 		//Recover start value of each vesrion
-		versionIndex = getVersionIdexes(Filenames.FINAL_FILE);
-		
-		for (int i = 0; i < positives.size(); i++)
-			System.out.println(i+1 + " " + positives.get(i) + " " + versionIndex.get(i));
+		List<Integer> versionIndex = getVersionIdexes(Filenames.FINAL_FILE);
 		
 		
 		//Load full file
@@ -373,10 +405,7 @@ public class GetClassifierInfo {
 		sampledFeatureInfo = new ArrayList<>();
 		
 		//Walk forward
-		System.out.println(versionIndex.size() + " " + (versionIndex.size()/2-2));
 		for (int i = 1; i < versionIndex.size()/2; i++) {
-			
-			//System.out.println(versionIndex.get(i));
 			
 			//Get correct instances for each step
 			Instances training = new Instances(allInstances, 0 , versionIndex.get(i));
