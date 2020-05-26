@@ -14,7 +14,7 @@ public class ClassifierInfo {
 	double falseN;
 	double precision;
 	double recall;
-	double Auc;
+	double auc;
 	double kappa;
 	
 	public ClassifierInfo(int trainingRelease, String name, String samplingName) {
@@ -128,10 +128,10 @@ public class ClassifierInfo {
 		this.recall = recall;
 	}
 	public double getAuc() {
-		return Auc;
+		return auc;
 	}
-	public void setAuc(double Auc) {
-		this.Auc = Auc;
+	public void setAuc(double auc) {
+		this.auc = auc;
 	}
 	public double getKappa() {
 		return kappa;
