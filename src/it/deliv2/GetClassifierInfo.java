@@ -311,10 +311,10 @@ public class GetClassifierInfo {
 		opts = new String[]{ "-B", "1", "-Z", df.format(trainingPositives)};
 		try {
 
-			spreadSubsample.setOptions(opts);
+			resample.setOptions(opts);
 			
 		} catch (Exception e) {
-			throw new EvalException("Cannot set options for OverSampling");
+			throw new EvalException(e.getMessage());
 		}
 		fc.setFilter(resample);
 		
