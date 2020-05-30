@@ -5,7 +5,7 @@ public final class Filenames {
 	private Filenames() {
 		
 	}
-	public static final String PROJ_NAME = "ZOOKEEPER";
+	public static final String PROJ_NAME = "BOOKKEEPER";
 	public static final String REPO_NAME = "https://github.com/Capo80/"+PROJ_NAME.toLowerCase()+".git";
 	public static final String VERS_FILE = PROJ_NAME + "VersionInfo.csv";
 	public static final String BUG_FILE = PROJ_NAME+"BuggynessInfo.csv";
