@@ -56,7 +56,7 @@ public class GetReleaseInfo {
 		   try (FileWriter fileWriter = new FileWriter(outname);) {
 			    fileWriter.append("Index,Version ID,Version Name,Date");
 			    fileWriter.append("\n");
-				releases.size();
+				
 				for ( i = 0; i < releases.size(); i++) {
 					   Integer index = i + 1;
 		               fileWriter.append(index.toString());
