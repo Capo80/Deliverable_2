@@ -195,6 +195,7 @@ public class GetClassifierInfo {
 			eval.evaluateModel(classifier, testing);
 			
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new EvalException("Cannot build or eval sets");
 		}
 
